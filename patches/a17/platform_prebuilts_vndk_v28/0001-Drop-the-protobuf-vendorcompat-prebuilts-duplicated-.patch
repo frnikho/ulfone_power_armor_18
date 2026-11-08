@@ -1,0 +1,87 @@
+From d210a398d1c58cd4d757e2051ea2a5ce2a193d04 Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:42:15 +0100
+Subject: [PATCH] Drop the protobuf vendorcompat prebuilts duplicated by
+ hardware/lineage/compat
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+Change-Id: I18e88ba681fd67305e4a32682a28b72034e14fc4
+---
+ Android.bp | 62 ------------------------------------------------------
+ 1 file changed, 62 deletions(-)
+
+diff --git a/Android.bp b/Android.bp
+index 683c24c..384d815 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -130,66 +130,4 @@ prebuilt_etc {
+ }
+ 
+ // Defining prebuilt libraries for the compatibility of old vendor modules
+-cc_prebuilt_library_shared {
+-    name: "libprotobuf-cpp-lite-vendorcompat",
+-    stem: "libprotobuf-cpp-lite",
+-    vendor: true,
+-    // These are already stripped, and restripping them just issues diagnostics.
+-    strip: {
+-        none: true,
+-    },
+-    shared_libs: [
+-        "libc++",
+-        "libc",
+-        "libdl",
+-        "liblog",
+-        "libm",
+-        "libz",
+-    ],
+-    target: {
+-        android_arm64: {
+-            srcs: ["arm64/arch-arm64-armv8-a/shared/vndk-core/libprotobuf-cpp-lite.so"],
+-        },
+-        android_arm: {
+-            srcs: ["arm/arch-arm-armv7-a-neon/shared/vndk-core/libprotobuf-cpp-lite.so"],
+-        },
+-        android_x86_64: {
+-            srcs: ["x86_64/arch-x86_64-x86_64/shared/vndk-core/libprotobuf-cpp-lite.so"],
+-        },
+-        android_x86: {
+-            srcs: ["x86/arch-x86-x86/shared/vndk-core/libprotobuf-cpp-lite.so"],
+-        },
+-    },
+-}
+ 
+-cc_prebuilt_library_shared {
+-    name: "libprotobuf-cpp-full-vendorcompat",
+-    stem: "libprotobuf-cpp-full",
+-    vendor: true,
+-    // These are already stripped, and restripping them just issues diagnostics.
+-    strip: {
+-        none: true,
+-    },
+-    shared_libs: [
+-        "libc++",
+-        "libc",
+-        "libdl",
+-        "liblog",
+-        "libm",
+-        "libz",
+-    ],
+-    target: {
+-        android_arm64: {
+-            srcs: ["arm64/arch-arm64-armv8-a/shared/vndk-core/libprotobuf-cpp-full.so"],
+-        },
+-        android_arm: {
+-            srcs: ["arm/arch-arm-armv7-a-neon/shared/vndk-core/libprotobuf-cpp-full.so"],
+-        },
+-        android_x86_64: {
+-            srcs: ["x86_64/arch-x86_64-x86_64/shared/vndk-core/libprotobuf-cpp-full.so"],
+-        },
+-        android_x86: {
+-            srcs: ["x86/arch-x86-x86/shared/vndk-core/libprotobuf-cpp-full.so"],
+-        },
+-    },
+-}
+-- 
+2.56.0
+

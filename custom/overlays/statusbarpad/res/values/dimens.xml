@@ -1,0 +1,3 @@
+<resources>
+    <dimen name="status_bar_padding_start">16dp</dimen>
+</resources>

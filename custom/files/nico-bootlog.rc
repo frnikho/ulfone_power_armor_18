@@ -1,0 +1,10 @@
+# Debug: persist boot logs to /metadata/nico so a stuck boot can be read from stock after a forced reboot.
+on post-fs
+    start nico_bootlog
+
+service nico_bootlog /system/bin/sh -c "mkdir -p /metadata/nico && dmesg -w > /metadata/nico/dmesg.txt 2>&1 & logcat -b all -v time -f /metadata/nico/logcat.txt"
+    user root
+    group root log
+    seclabel u:r:su:s0
+    oneshot
+    disabled

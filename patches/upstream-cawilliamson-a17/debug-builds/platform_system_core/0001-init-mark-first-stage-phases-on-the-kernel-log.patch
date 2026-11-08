@@ -1,0 +1,106 @@
+From f329285e69c9e62e93e894e11919d9792cdf1438 Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Mon, 12 Oct 2026 20:26:30 +0100
+Subject: [PATCH 1/1] init: mark first stage phases on the kernel log
+
+first stage aborts before the logger is up are completely silent: the
+boot runs init, init exits without a single logged line, and the kernel
+panic loops with nothing but "attempted to kill init". seen on a legacy
+4.19 vendor kernel where a 17.0 GSI dies ~150ms after the root mount on
+every build, while the same device boots a 16.0 image - with no way to
+tell which early stage killed it.
+
+emit a fixed set of phase markers straight to /dev/kmsg, bypassing the
+logger entirely, and dump any accumulated early setup errors alongside
+them. the last marker present in pstore after a dead boot locates the
+failing stage; the absence pattern distinguishes a broken logger from an
+early exit.
+---
+ init/first_stage_init.cpp | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+diff --git a/init/first_stage_init.cpp b/init/first_stage_init.cpp
+index c6e9095e9..d17121fce 100644
+--- a/init/first_stage_init.cpp
++++ b/init/first_stage_init.cpp
+@@ -342,6 +342,20 @@ static std::unique_ptr<FirstStageMount> CreateFirstStageMount(const std::string&
+     }
+ }
+ 
++// Emit directly to the kernel ring, independent of the logger: every early
++// exit path in first stage must stay visible even when the userspace logger
++// cannot be initialised. Without this a first stage abort is completely
++// silent and the boot just panic loops, with no trace of how far init got
++// (seen on legacy vendor kernels: init exits before its first logged line).
++static void EarlyKmsg(const std::string& msg) {
++    int fd = TEMP_FAILURE_RETRY(open("/dev/kmsg", O_WRONLY | O_CLOEXEC));
++    if (fd == -1) return;
++    std::string line = "init: " + msg + "\n";
++    ssize_t written = write(fd, line.data(), line.size());
++    (void)written;
++    close(fd);
++}
++
+ int FirstStageMain(int argc, char** argv) {
+     boot_clock::time_point start_time = boot_clock::now();
+ 
+@@ -417,6 +431,11 @@ int FirstStageMain(int argc, char** argv) {
+     }
+ #undef CHECKCALL
+ 
++    for (const auto& [error_string, error_errno] : errors) {
++        EarlyKmsg("fstage: early setup failure: " + error_string + ": " + strerror(error_errno));
++    }
++    EarlyKmsg("fstage: early mounts and device nodes done");
++
+     SetStdioToDevNull(argv);
+     // Now that tmpfs is mounted on /dev and we have /dev/kmsg, we can actually
+     // talk to the outside world...
+@@ -429,6 +448,8 @@ int FirstStageMain(int argc, char** argv) {
+         LOG(FATAL) << "Init encountered errors starting first stage, aborting";
+     }
+ 
++    EarlyKmsg("fstage: logger ready");
++
+     LOG(INFO) << "init first stage started!";
+ 
+     auto old_root_dir = std::unique_ptr<DIR, decltype(&closedir)>{opendir("/"), closedir};
+@@ -481,6 +502,8 @@ int FirstStageMain(int argc, char** argv) {
+                   << module_elapse_time.count() << " ms";
+     }
+ 
++    EarlyKmsg("fstage: kernel modules done");
++
+     MaybeResumeFromHibernation(bootconfig);
+ 
+     std::unique_ptr<FirstStageMount> fsm;
+@@ -544,6 +567,8 @@ int FirstStageMain(int argc, char** argv) {
+         SwitchRoot("/first_stage_ramdisk");
+     }
+ 
++    EarlyKmsg("fstage: first stage mount begin");
++
+     if (IsRecoveryMode()) {
+         LOG(INFO) << "First stage mount skipped (recovery mode)";
+     } else {
+@@ -569,6 +594,8 @@ int FirstStageMain(int argc, char** argv) {
+         }
+     }
+ 
++    EarlyKmsg("fstage: early partitions mounted");
++
+     struct stat new_root_info{};
+     if (stat("/", &new_root_info) != 0) {
+         PLOG(ERROR) << "Could not stat(\"/\"), not freeing ramdisk";
+@@ -584,6 +611,8 @@ int FirstStageMain(int argc, char** argv) {
+     setenv(kEnvFirstStageStartedAt, std::to_string(start_time.time_since_epoch().count()).c_str(),
+            1);
+ 
++    EarlyKmsg("fstage: exec second stage");
++
+     const char* path = "/system/bin/init";
+     const char* args[] = {path, "selinux_setup", nullptr};
+     auto fd = open("/dev/kmsg", O_WRONLY | O_CLOEXEC);
+-- 
+2.55.0
+

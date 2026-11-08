@@ -1,0 +1,34 @@
+From c9ad6f57730a586314613194c497e91b478cbda1 Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:39:38 +0100
+Subject: [PATCH] rw-system: skip fixSPL on the Ulefone Power Armor 18
+
+Its TrustKernel keymaster only accepts the stock OS version/SPL/identity; those are
+provided statically through ro.keymaster.* and the per-process prop redirect, and
+fixSPL's teed patch + restart makes the TEE reject the root of trust.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+---
+ rw-system.sh | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/rw-system.sh b/rw-system.sh
+index fa661b2..ecb6ed9 100644
+--- a/rw-system.sh
++++ b/rw-system.sh
+@@ -374,7 +374,10 @@ chmod 0 /mnt/phh/unreadable
+ if [ -n "$vndk" ] && [ "$vndk" -le 29 ]; then
+     mount /mnt/phh/unreadable /vendor/etc/seccomp_policy/configstore@1.1.policy
+ fi
+-if ! getprop ro.product.vendor.model | grep -q -e oppo6771; then
++# Ulefone Power Armor 18 (TrustKernel keymaster 4.1): the stock OS version/SPL/identity are exposed to
++# the keymaster HAL through static ro.keymaster.* props + debug.phh.props.ice.trustkernel. fixSPL would
++# overwrite them and restart teed, which makes the TEE reject the root of trust (TEE return -38).
++if ! getprop ro.product.vendor.model | grep -q -e oppo6771 -e 'Power Armor 18'; then
+     fixSPL
+ fi
+ 
+-- 
+2.56.0
+

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -e
+
+patches=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+tree="$2"
+
+# empty tiers (or project dirs without .patch files) must no-op rather than
+# letting unexpanded globs leak through as literal paths
+shopt -s nullglob
+
+echo "Applying ${tree} patches:"
+[ -d "$patches/$tree" ] || {
+  echo "  (no patches for tier '$tree', skipping)"
+  exit 0
+}
+
+for project in "$patches"/"$tree"/*/; do
+  project=$(basename "$project")
+  echo "> ${project}"
+  p="$(tr _ / <<<"$project" | sed -e 's;platform/;;g')"
+  [ "$p" == build ] && p=build/make
+  [ "$p" == system/fs/fs/mgr ] && p=system/fs/fs_mgr
+  [ "$p" == testing ] && p=platform_testing
+  [ "$p" == treble/app ] && p=treble_app
+  [ "$p" == vendor/hardware/overlay ] && p=vendor/hardware_overlay
+  [ "$p" == vendor/partner/gms ] && p=vendor/partner_gms
+  pushd "$p" &>/dev/null
+  for patch in "$patches"/"$tree"/"$project"/*.patch; do
+    echo ">> ${patch}"
+    git am "$patch" || {
+      git am --abort
+      exit 1
+    }
+  done
+  popd &>/dev/null
+done

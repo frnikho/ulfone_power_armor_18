@@ -1,0 +1,10 @@
+# Injected by Magisk (overlay.d). Runs ${MAGISKTMP}/nico-bootlog.sh (from overlay.d/sbin) at early-init.
+on early-init
+    start nico_bootlog
+
+service nico_bootlog /system/bin/sh ${MAGISKTMP}/nico-bootlog.sh
+    user root
+    group root
+    seclabel u:r:magisk:s0
+    oneshot
+    disabled

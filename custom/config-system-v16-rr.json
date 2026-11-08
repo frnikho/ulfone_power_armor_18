@@ -1,0 +1,7 @@
+{
+  "base_image": "/lab/ulphone/out/system_a-v16-spl.img",
+  "output_image": "/lab/ulphone/out/system_a-v16-rr.img",
+  "add_files": {
+    "/system/product/overlay/RefreshRateNico.apk": "/lab/ulphone/custom/overlays/refreshrate/RefreshRateNico.apk"
+  }
+}

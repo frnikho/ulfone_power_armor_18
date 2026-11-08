@@ -1,0 +1,610 @@
+From 7f89278481e72e091c84d01c98cfa4dbdf3207dc Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Mon, 28 Sep 2026 08:32:18 +0100
+Subject: [PATCH 1/1] use scudo allocator with vendor-overridable hardening toggles
+
+grapheneos hardened_malloc and its userspace hardening knobs assume
+pixel-grade kernels and vendor support. switch to the aosp scudo
+allocator and gate the mte/tbi and thread stack hardening choices
+behind vendor overridable properties; the toggles only exist because
+of the allocator swap, so they are one change.
+---
+ libc/Android.bp                   |  17 +---
+ libc/bionic/heap_tagging.cpp      |  14 +--
+ libc/bionic/libc_init_dynamic.cpp |  86 ----------------
+ libc/bionic/libc_init_mte.cpp     |  45 ++++----
+ libc/bionic/malloc_common.h       |  20 ----
+ libc/bionic/pthread_create.cpp    | 164 +++++++++++++++++++-----------
+ libc/bionic/pthread_internal.h    |  12 +--
+ libc/libc.map.txt                 |   1 -
+ 8 files changed, 128 insertions(+), 231 deletions(-)
+
+diff --git a/libc/Android.bp b/libc/Android.bp
+index 42d5d93..3b0db1d 100644
+--- a/libc/Android.bp
++++ b/libc/Android.bp
+@@ -191,26 +191,15 @@ cc_defaults {
+ 
+     header_libs: ["gwp_asan_headers"],
+     whole_static_libs: ["libscudo"],
++    cflags: ["-DUSE_SCUDO"],
+ 
+     multilib: {
+         lib32: {
+-            cflags: ["-DUSE_SCUDO"],
+             exclude_static_libs: [
+                 "libjemalloc5",
+                 "libc_jemalloc_wrapper",
+             ],
+         },
+-        lib64: {
+-            srcs: [":libc_h_malloc_wrapper_src"],
+-            cflags: [
+-                "-DH_MALLOC_PREFIX",
+-                "-DUSE_H_MALLOC",
+-                "-DUSE_SCUDO",
+-            ],
+-            whole_static_libs: [
+-                "libhardened_malloc",
+-            ],
+-        },
+     },
+ }
+ 
+@@ -226,10 +215,6 @@ cc_library_static {
+             srcs: ["bionic/jemalloc_wrapper.cpp"],
+             static_libs: ["libjemalloc5"],
+         },
+-        lib64: {
+-            srcs: [":libc_h_malloc_wrapper_src"],
+-            static_libs: ["libhardened_malloc"],
+-        },
+     },
+     cflags: ["-fvisibility=hidden"],
+ 
+diff --git a/libc/bionic/heap_tagging.cpp b/libc/bionic/heap_tagging.cpp
+index 6b29f8e..c7b6d22 100644
+--- a/libc/bionic/heap_tagging.cpp
++++ b/libc/bionic/heap_tagging.cpp
+@@ -36,8 +36,6 @@
+ #include <sys/auxv.h>
+ #include <sys/prctl.h>
+ 
+-extern "C" void h_malloc_disable_memory_tagging();
+-
+ extern "C" void scudo_malloc_disable_memory_tagging();
+ extern "C" void scudo_malloc_set_track_allocation_stacks(int);
+ 
+@@ -79,17 +77,10 @@ void SetDefaultHeapTaggingLevel() {
+   switch (heap_tagging_level) {
+     case M_HEAP_TAGGING_LEVEL_TBI:
+     case M_HEAP_TAGGING_LEVEL_NONE:
+-#if defined(USE_SCUDO)
+       scudo_malloc_disable_memory_tagging();
+-#endif
+-#if defined(USE_H_MALLOC)
+-      h_malloc_disable_memory_tagging();
+-#endif
+       break;
+     case M_HEAP_TAGGING_LEVEL_SYNC:
+-#if defined(USE_SCUDO)
+       scudo_malloc_set_track_allocation_stacks(1);
+-#endif
+       break;
+     default:
+       break;
+@@ -160,11 +151,8 @@ bool SetHeapTaggingLevel(HeapTaggingLevel tag_level) {
+           return false;
+         }
+       }
+-#if defined(USE_SCUDO) && !__has_feature(hwaddress_sanitizer)
++#if !__has_feature(hwaddress_sanitizer)
+       scudo_malloc_disable_memory_tagging();
+-#endif
+-#if defined(USE_H_MALLOC)
+-      h_malloc_disable_memory_tagging();
+ #endif
+       break;
+     case M_HEAP_TAGGING_LEVEL_TBI:
+diff --git a/libc/bionic/libc_init_dynamic.cpp b/libc/bionic/libc_init_dynamic.cpp
+index 8ca4da2..798c133 100644
+--- a/libc/bionic/libc_init_dynamic.cpp
++++ b/libc/bionic/libc_init_dynamic.cpp
+@@ -53,23 +53,6 @@
+ #include "private/bionic_ssp.h"
+ #include "private/bionic_tls.h"
+ #include "private/KernelArgumentBlock.h"
+-#include "sys/system_properties.h"
+-#include "sysprop_helpers.h"
+-
+-static bool starts_with(const char* s, const char* prefix) {
+-  return strncmp(s, prefix, strlen(prefix)) == 0;
+-}
+-
+-static bool is_debuggable_build() {
+-#ifdef IS_DEBUGGABLE_BUILD
+-    return true;
+-#else
+-    return false;
+-#endif
+-}
+-
+-extern "C" const char* __gnu_basename(const char* path);
+-
+ extern "C" {
+   extern void netdClientInit(void);
+   extern int __cxa_atexit(void (*)(void *), void *, void *);
+@@ -94,74 +77,6 @@ extern "C" __attribute__((weak)) void __hwasan_library_unloaded(ElfW(Addr) base,
+                                                                 const ElfW(Phdr)* phdr,
+                                                                 ElfW(Half) phnum);
+ 
+-static void init_prog_id(libc_globals* globals) {
+-  char exe_path[500];
+-  ssize_t readlink_res = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1 /* space for NUL terminator */);
+-  if (readlink_res <= 0) {
+-    return;
+-  }
+-  exe_path[readlink_res] = '\0';
+-
+-  int prog_id = 0;
+-  int flags = 0;
+-
+-#define IS(prog) (!strcmp(exe_path, prog))
+-
+-  if (IS("/apex/com.google.pixel.camera.hal/bin/hw/android.hardware.camera.provider@2.7-service-google")) {
+-    prog_id = PROG_PIXEL_CAMERA_PROVIDER_SERVICE;
+-  }
+-  else if (IS("/system/bin/surfaceflinger")) {
+-    prog_id = PROG_SURFACEFLINGER;
+-  }
+-  else if (IS("/vendor/bin/hw/android.hardware.audio.service")) {
+-    // needed for Pixel Tablet as of Android 15, see https://github.com/GrapheneOS/os-issue-tracker/issues/4306
+-    flags = GLOBAL_FLAG_DISABLE_HARDENED_MALLOC;
+-  } else if (IS("/vendor/bin/shared_modem_platform")) {
+-    char device_name[PROP_VALUE_MAX];
+-    get_property_value("ro.product.name", device_name, sizeof(device_name));
+-    if (strcmp(device_name, "tokay") == 0
+-        || strcmp(device_name, "caiman") == 0
+-        || strcmp(device_name, "komodo") == 0
+-        || strcmp(device_name, "comet") == 0
+-        || strcmp(device_name, "stallion") == 0
+-        || strcmp(device_name, "frankel") == 0
+-        || strcmp(device_name, "blazer") == 0
+-        || strcmp(device_name, "mustang") == 0
+-        || strcmp(device_name, "rango") == 0
+-    ) {
+-      flags = GLOBAL_FLAG_DISABLE_HARDENED_MALLOC;
+-    }
+-  }
+-
+-#undef IS
+-
+-  bool is_debuggable = is_debuggable_build();
+-  const bool is_vendor_prog = starts_with(exe_path, "/vendor/") || starts_with(exe_path, "/apex/com.google.");
+-  if (is_debuggable && is_vendor_prog) {
+-    const char* basename = __gnu_basename(exe_path);
+-    static const char propName[] = "persist.device_config.memory_safety_native.hardened_malloc.mode_override.process.";
+-    char sysprop_name[512];
+-    char sysprop_value[PROP_VALUE_MAX] = {};
+-    async_safe_format_buffer(sysprop_name, sizeof(sysprop_name), "%s%s", propName,
+-                             basename);
+-    get_property_value(sysprop_name, sysprop_value, sizeof(sysprop_value));
+-    if (strcmp("disabled", sysprop_value) == 0) {
+-      flags = GLOBAL_FLAG_DISABLE_HARDENED_MALLOC;
+-    } else if (strcmp("enabled", sysprop_value) == 0) {
+-      prog_id = 0;
+-      flags = 0;
+-    }
+-  }
+-
+-  // libc_globals struct is write-protected
+-  globals->flags = flags;
+-  globals->prog_id = prog_id;
+-}
+-
+-int get_prog_id() {
+-  return __libc_globals->prog_id;
+-}
+-
+ // We need a helper function for __libc_preinit because compiling with LTO may
+ // inline functions requiring a stack protector check, but __stack_chk_guard is
+ // not initialized at the start of __libc_preinit. __libc_preinit_impl will run
+@@ -194,7 +109,6 @@ static void __libc_preinit_impl() {
+ 
+   // Hooks for various libraries to let them know that we're starting up.
+   __libc_globals.mutate([](libc_globals* globals) {
+-    init_prog_id(globals);
+     __libc_init_malloc(globals);
+ 
+     // save the default SIGABRT handler to support restoring it with mallopt(M_BIONIC_RESTORE_DEFAULT_SIGABRT_HANDLER)
+diff --git a/libc/bionic/libc_init_mte.cpp b/libc/bionic/libc_init_mte.cpp
+index 04bb47e..9a20d50 100644
+--- a/libc/bionic/libc_init_mte.cpp
++++ b/libc/bionic/libc_init_mte.cpp
+@@ -135,30 +135,12 @@ static bool get_environment_memtag_setting(HeapTaggingLevel* level) {
+   const bool is_vendor_prog = starts_with(progname, "/vendor/") || starts_with(progname, "/apex/com.google.");
+   const bool is_debug_build = is_debuggable_build();
+   if (is_vendor_prog) {
+-    char device_name[PROP_VALUE_MAX];
+-    get_property_value("ro.product.name", device_name, sizeof(device_name));
+-    bool apply_override =
+-        strcmp(progname, "/apex/com.google.pixel.camera.hal/bin/hw/android.hardware.camera.provider@2.7-service-google") != 0
+-        && strcmp(progname, "/apex/com.google.android.widevine/bin/hw/android.hardware.drm-service.widevine-rikers") != 0
+-        && (
+-            (
+-                 strcmp(device_name, "tokay") != 0
+-                 && strcmp(device_name, "caiman") != 0
+-                 && strcmp(device_name, "komodo") != 0
+-                 && strcmp(device_name, "comet") != 0
+-                 && strcmp(device_name, "stallion") != 0
+-                 && strcmp(device_name, "frankel") != 0
+-                 && strcmp(device_name, "blazer") != 0
+-                 && strcmp(device_name, "mustang") != 0
+-                 && strcmp(device_name, "rango") != 0
+-            ) || strcmp(progname, "/vendor/bin/shared_modem_platform") != 0
+-        )
+-    ;
+-    if (apply_override) {
+-        *level = M_HEAP_TAGGING_LEVEL_ASYNC;
+-    } else if (!is_debug_build) {
+-        return true;
+-     }
++    char mte_vendor_enabled[PROP_VALUE_MAX];
++    get_property_value("persist.sys.phh.hardening.mte_vendor", mte_vendor_enabled, sizeof(mte_vendor_enabled));
++    if (strcmp(mte_vendor_enabled, "true") != 0) {
++      *level = M_HEAP_TAGGING_LEVEL_NONE;
++      return true;
++    }
+   }
+ 
+   if (!is_debug_build) {
+@@ -179,7 +161,7 @@ static bool get_environment_memtag_setting(HeapTaggingLevel* level) {
+ 
+   if (!get_config_from_env_or_sysprops("MEMTAG_OPTIONS", sys_prop_names, arraysize(sys_prop_names),
+                                        options_str, sizeof(options_str))) {
+-    return is_vendor_prog;
++    return false;
+   }
+ 
+   if (strcmp("sync", options_str) == 0) {
+@@ -188,10 +170,12 @@ static bool get_environment_memtag_setting(HeapTaggingLevel* level) {
+     *level = M_HEAP_TAGGING_LEVEL_ASYNC;
+   } else if (strcmp("off", options_str) == 0) {
+     *level = M_HEAP_TAGGING_LEVEL_TBI;
++  } else if (strcmp("none", options_str) == 0) {
++    *level = M_HEAP_TAGGING_LEVEL_NONE;
+   } else {
+     async_safe_format_log(
+         ANDROID_LOG_ERROR, "libc",
+-        "unrecognized memtag level: \"%s\" (options are \"sync\", \"async\", or \"off\").",
++        "unrecognized memtag level: \"%s\" (options are \"sync\", \"async\", \"off\", or \"none\").",
+         options_str);
+     return false;
+   }
+@@ -298,6 +282,15 @@ __attribute__((no_sanitize("hwaddress", "memtag"))) void __libc_init_mte(
+       __get_tagging_level(memtag_dynamic_entries, phdr_start, phdr_ct, load_bias, &memtag_stack);
+   if (memtag_stack) __libc_shared_globals()->initial_memtag_stack_abi = true;
+ 
++  // "none" means fully disable all pointer tagging (no MTE, no TBI). This is
++  // needed for processes that communicate with kernel drivers (e.g. TEE drivers)
++  // that cannot handle tagged pointers in their copy_from_user/copy_to_user paths.
++  if (level == M_HEAP_TAGGING_LEVEL_NONE) {
++    __libc_shared_globals()->initial_heap_tagging_level = M_HEAP_TAGGING_LEVEL_NONE;
++    __libc_shared_globals()->heap_tagging_upgrade_timer_sec = 0;
++    return;
++  }
++
+   if (int64_t timed_upgrade = __get_memtag_upgrade_secs()) {
+     if (level == M_HEAP_TAGGING_LEVEL_ASYNC) {
+       async_safe_format_log(ANDROID_LOG_INFO, "libc",
+diff --git a/libc/bionic/malloc_common.h b/libc/bionic/malloc_common.h
+index ef4b1a4..9604296 100644
+--- a/libc/bionic/malloc_common.h
++++ b/libc/bionic/malloc_common.h
+@@ -55,28 +55,8 @@ __END_DECLS
+ 
+ #else // __has_feature(hwaddress_sanitizer)
+ 
+-#ifdef  __LP64__
+-#ifndef USE_H_MALLOC
+-#error missing USE_H_MALLOC
+-#endif
+-
+-#include "h_malloc.h"
+-#define Malloc(function)  h_ ## function
+-__BEGIN_DECLS
+-int h_malloc_info(int options, FILE* fp);
+-__END_DECLS
+-
+-#if defined(USE_SCUDO)
+-#include "scudo.h"
+-void InitNativeAllocatorDispatch(libc_globals* globals);
+-#endif
+-
+-#define BOTH_H_MALLOC_AND_SCUDO
+-
+-#else // 32-bit
+ #include "scudo.h"
+ #define Malloc(function)  scudo_ ## function
+-#endif
+ 
+ #endif
+ 
+diff --git a/libc/bionic/pthread_create.cpp b/libc/bionic/pthread_create.cpp
+index af5a1b6..07c8395 100644
+--- a/libc/bionic/pthread_create.cpp
++++ b/libc/bionic/pthread_create.cpp
+@@ -29,8 +29,8 @@
+ #include <pthread.h>
+ 
+ #include <errno.h>
+-#include <stdlib.h>
+ #include <string.h>
++#include <sys/system_properties.h>
+ #include <sys/auxv.h>
+ #include <sys/mman.h>
+ #include <sys/prctl.h>
+@@ -219,6 +219,17 @@ int __init_thread(pthread_internal_t* thread) {
+   return 0;
+ }
+ 
++// Check once whether GrapheneOS stack hardening is enabled.
++static bool __gos_stack_hardening_enabled() {
++  static int cached = -1;
++  if (cached == -1) {
++    char value[PROP_VALUE_MAX] = {};
++    __system_property_get("persist.sys.phh.hardening.stack_hardening", value);
++    cached = (strcmp(value, "true") == 0) ? 1 : 0;
++  }
++  return cached == 1;
++}
++
+ // Allocate a thread's primary mapping. This mapping includes static TLS and
+ // optionally a stack. Static TLS includes ELF TLS segments and the bionic_tls
+ // struct.
+@@ -227,38 +238,45 @@ int __init_thread(pthread_internal_t* thread) {
+ ThreadMapping __allocate_thread_mapping(size_t stack_size, size_t stack_guard_size) {
+   const StaticTlsLayout& layout = __libc_shared_globals()->static_tls_layout;
+ 
++  const bool hardened = __gos_stack_hardening_enabled();
++
+   // Address calculated using stack_size is passed to mprotect later, so make it page-aligned.
+   const size_t unaligned_stack_size = stack_size;
+   stack_size = __builtin_align_up(stack_size, page_size());
+   if (stack_size < unaligned_stack_size) return {};
+ 
+-  // Round up static TLS layout size to be multiple of page size as well.
+-  size_t static_tls_layout_size = __builtin_align_up(layout.size(), page_size());
++  size_t static_tls_layout_size;
++  size_t gap_size = 0;
++  size_t thread_page_size = 0;
+ 
+-  // Place a randomly sized gap above the stack, up to 10% as large as the stack
+-  // on 32-bit and 50% on 64-bit where virtual memory is plentiful.
++  if (hardened) {
++    // GrapheneOS hardened layout: page-aligned TLS, random gap, separate pthread_internal_t page.
++    stack_size = __builtin_align_up(stack_size, page_size());
++    static_tls_layout_size = __builtin_align_up(layout.size(), page_size());
++
++    // Place a randomly sized gap above the stack, up to 10% as large as the stack
++    // on 32-bit and 50% on 64-bit where virtual memory is plentiful.
+ #if __LP64__
+-  size_t max_gap_size = stack_size / 2;
++    size_t max_gap_size = stack_size / 2;
+ #else
+-  size_t max_gap_size = stack_size / 10;
++    size_t max_gap_size = stack_size / 10;
+ #endif
+-  // Make sure the random stack top guard size is a multiple of the page size,
+-  // and always reserve at least one guard page between the stack and the
+-  // pthread_internal_t / static TLS region. arc4random_uniform() can return 0,
+-  // and align_up(0, page_size) is 0, which would leave no guard page at all
+-  // and let a stack overflow silently corrupt pthread_internal_t.
+-  //
+-  // For the main thread, the stack isn't in this mapping and we don't need to
+-  // add a random gap.
+-  size_t gap_size = __builtin_align_up(arc4random_uniform(max_gap_size), page_size());
+-  if (stack_size > 0 && gap_size == 0) gap_size = page_size();
++    // Make sure the random stack top guard size are multiples of page size.
++    gap_size = __builtin_align_up(arc4random_uniform(max_gap_size), page_size());
++    if (stack_size > 0 && gap_size == 0) gap_size = page_size();
++    thread_page_size = __builtin_align_up(sizeof(pthread_internal_t), page_size());
++  } else {
++    // AOSP layout: contiguous stack + TLS region.
++    static_tls_layout_size = layout.size();
++  }
+ 
+-  // Allocate in order: stack guard, stack, (random) guard page(s), pthread_internal_t, static TLS, libgen buffers, guard page.
++  // Calculate total mapping size.
+   size_t mmap_size;
+   if (__builtin_add_overflow(stack_size, stack_guard_size, &mmap_size)) return {};
+-  if (__builtin_add_overflow(mmap_size, gap_size, &mmap_size)) return {};
+-  size_t thread_page_size = __builtin_align_up(sizeof(pthread_internal_t), page_size());
+-  if (__builtin_add_overflow(mmap_size, thread_page_size, &mmap_size)) return {};
++  if (hardened) {
++    if (__builtin_add_overflow(mmap_size, gap_size, &mmap_size)) return {};
++    if (__builtin_add_overflow(mmap_size, thread_page_size, &mmap_size)) return {};
++  }
+   if (__builtin_add_overflow(mmap_size, static_tls_layout_size, &mmap_size)) return {};
+   if (__builtin_add_overflow(mmap_size, PTHREAD_GUARD_SIZE, &mmap_size)) return {};
+   // Add space for the dedicated libgen buffers page(s).
+@@ -271,7 +289,7 @@ ThreadMapping __allocate_thread_mapping(size_t stack_size, size_t stack_guard_si
+   if (mmap_size < unaligned_size) return {};
+ 
+   // Create a new private anonymous map. Make the entire mapping PROT_NONE, then carve out
+-  // read+write areas in the middle.
++  // read+write area(s) in the middle.
+   const int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE;
+   char* const space = static_cast<char*>(mmap(nullptr, mmap_size, PROT_NONE, flags, -1, 0));
+   if (space == MAP_FAILED) {
+@@ -288,39 +306,6 @@ ThreadMapping __allocate_thread_mapping(size_t stack_size, size_t stack_guard_si
+     prot_str = "R+W+MTE";
+   }
+ #endif
+-  // Stack is at the lower end of mapped space, stack guard region is at the lower end of stack.
+-  // Make the usable portion of the stack between the guard region and random gap readable and
+-  // writable.
+-  if (mprotect(space + stack_guard_size, stack_size, prot) != 0) {
+-    async_safe_format_log(
+-        ANDROID_LOG_WARN, "libc",
+-        "pthread_create failed: couldn't mprotect %s %zu-byte stack mapping region: %m", prot_str,
+-        stack_size);
+-    munmap(space, mmap_size);
+-    return {};
+-  }
+-
+-  const size_t non_stack_writeable_offset = stack_guard_size + stack_size + gap_size;
+-  const size_t non_stack_writeable_size = mmap_size - non_stack_writeable_offset - PTHREAD_GUARD_SIZE;
+-
+-  if (mprotect(space + non_stack_writeable_offset, non_stack_writeable_size, PROT_READ | PROT_WRITE) != 0) {
+-    async_safe_format_log(
+-        ANDROID_LOG_WARN, "libc",
+-        "pthread_create failed: couldn't mprotect R+W %zu-byte non-stack mapping region: %m",
+-        non_stack_writeable_size);
+-    munmap(space, mmap_size);
+-    return {};
+-  }
+-
+-  // Layout from the end of the mmap-ed region (before the top PTHREAD_GUARD_SIZE):
+-  //
+-  // [ PTHREAD_GUARD_SIZE ]
+-  // [ libgen_buffers_padded_size (for dedicated page(s) for libgen buffers) ]
+-  // [ static_tls_layout_size ]
+-  // [ thread_page_size (for pthread_internal_t) ]
+-  // [ gap_size (for (random) guard page(s)) ]
+-  // [ stack_size ]
+-  // [ stack_guard_size ]
+ 
+   ThreadMapping result = {};
+   result.mmap_base = space;
+@@ -328,12 +313,53 @@ ThreadMapping __allocate_thread_mapping(size_t stack_size, size_t stack_guard_si
+   result.mmap_base_unguarded = space + stack_guard_size;
+   result.mmap_size_unguarded = mmap_size - stack_guard_size - PTHREAD_GUARD_SIZE;
+   result.libgen_buffers = space + mmap_size - PTHREAD_GUARD_SIZE - libgen_buffers_padded_size;
+-  result.static_tls = result.libgen_buffers - static_tls_layout_size;
+   result.stack_base = space;
+-  // Choose a random base within the first page of the stack. Waste no more
+-  // than the space originally wasted by pthread_internal_t for compatibility.
+-  result.stack_top = space + stack_guard_size + stack_size - arc4random_uniform(sizeof(pthread_internal_t));
+-  result.stack_top = __builtin_align_down(result.stack_top, 16);
++
++  if (hardened) {
++    // GrapheneOS: two separate writable regions with a random PROT_NONE gap between them.
++    if (mprotect(space + stack_guard_size, stack_size, prot) != 0) {
++      async_safe_format_log(
++          ANDROID_LOG_WARN, "libc",
++          "pthread_create failed: couldn't mprotect %s %zu-byte stack mapping region: %m", prot_str,
++          stack_size);
++      munmap(space, mmap_size);
++      return {};
++    }
++    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, space, stack_guard_size, "stack guard");
++    char* const stack_top_guard = space + stack_guard_size + stack_size;
++    prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, stack_top_guard, gap_size, "stack top guard");
++
++    const size_t non_stack_writeable_offset = stack_guard_size + stack_size + gap_size;
++    const size_t non_stack_writeable_size = mmap_size - non_stack_writeable_offset - PTHREAD_GUARD_SIZE;
++
++    if (mprotect(space + non_stack_writeable_offset, non_stack_writeable_size, PROT_READ | PROT_WRITE) != 0) {
++      async_safe_format_log(
++          ANDROID_LOG_WARN, "libc",
++          "pthread_create failed: couldn't mprotect R+W %zu-byte non-stack mapping region: %m",
++          non_stack_writeable_size);
++      munmap(space, mmap_size);
++      return {};
++    }
++
++    result.static_tls = result.libgen_buffers - static_tls_layout_size;
++    result.stack_top = space + stack_guard_size + stack_size - arc4random_uniform(sizeof(pthread_internal_t));
++    result.stack_top = __builtin_align_down(result.stack_top, 16);
++  } else {
++    // AOSP: single contiguous writable region.
++    const size_t writable_size = mmap_size - stack_guard_size - PTHREAD_GUARD_SIZE;
++    if (mprotect(space + stack_guard_size, writable_size, prot) != 0) {
++      async_safe_format_log(
++          ANDROID_LOG_WARN, "libc",
++          "pthread_create failed: couldn't mprotect %s %zu-byte thread mapping region: %m", prot_str,
++          writable_size);
++      munmap(space, mmap_size);
++      return {};
++    }
++
++    result.static_tls = result.libgen_buffers - layout.size();
++    result.stack_top = result.static_tls;
++  }
++
+   return result;
+ }
+ 
+@@ -345,6 +371,12 @@ static int __allocate_thread(pthread_attr_t* attr, bionic_tcb** tcbp, void** chi
+   if (attr->stack_base == nullptr) {
+     // The caller didn't provide a stack, so allocate one.
+ 
++    // When stack hardening is enabled and the caller is using the default stack
++    // size, upgrade to the hardened (8MB) size.
++    if (__gos_stack_hardening_enabled() && attr->stack_size == PTHREAD_STACK_SIZE_DEFAULT) {
++      attr->stack_size = PTHREAD_STACK_SIZE_HARDENED;
++    }
++
+     // Make sure the guard size is a multiple of page_size().
+     const size_t unaligned_guard_size = attr->guard_size;
+     attr->guard_size = __builtin_align_up(attr->guard_size, page_size());
+@@ -363,8 +395,16 @@ static int __allocate_thread(pthread_attr_t* attr, bionic_tcb** tcbp, void** chi
+     stack_top = static_cast<char*>(attr->stack_base) + attr->stack_size;
+   }
+ 
+-  pthread_internal_t* thread = reinterpret_cast<pthread_internal_t*>(
+-      mapping.static_tls - __builtin_align_up(sizeof(pthread_internal_t), page_size()));
++  pthread_internal_t* thread;
++  if (__gos_stack_hardening_enabled()) {
++    // GrapheneOS: pthread_internal_t on its own page-aligned region below static TLS.
++    thread = reinterpret_cast<pthread_internal_t*>(
++        mapping.static_tls - __builtin_align_up(sizeof(pthread_internal_t), page_size()));
++  } else {
++    // AOSP: pthread_internal_t carved from the top of the stack.
++    stack_top = __builtin_align_down(stack_top - sizeof(pthread_internal_t), 16);
++    thread = reinterpret_cast<pthread_internal_t*>(stack_top);
++  }
+   if (!stack_clean) {
+     // If thread was not allocated by mmap(), it may not have been cleared to zero.
+     // So assume the worst and zero it.
+diff --git a/libc/bionic/pthread_internal.h b/libc/bionic/pthread_internal.h
+index c10e25f..96c9ccc 100644
+--- a/libc/bionic/pthread_internal.h
++++ b/libc/bionic/pthread_internal.h
+@@ -264,15 +264,13 @@ __LIBC_HIDDEN__ void pthread_key_clean_all(void);
+ #define SIGNAL_STACK_SIZE_WITHOUT_GUARD (16 * 1024)
+ #endif
+ 
+-// Traditionally we gave threads a 1MiB stack. When we started
+-// allocating per-thread alternate signal stacks to ease debugging of
+-// stack overflows, we subtracted the same amount we were using there
+-// from the default thread stack size. This should keep memory usage
+-// roughly constant.
++// Default to AOSP 1MB. GrapheneOS 8MB is applied at runtime when stack
++// hardening is enabled via persist.sys.phh.hardening.stack_hardening.
++#define PTHREAD_STACK_SIZE_DEFAULT ((1 * 1024 * 1024) - SIGNAL_STACK_SIZE_WITHOUT_GUARD)
+ #ifdef __LP64__
+-#define PTHREAD_STACK_SIZE_DEFAULT ((8 * 1024 * 1024) - SIGNAL_STACK_SIZE_WITHOUT_GUARD)
++#define PTHREAD_STACK_SIZE_HARDENED ((8 * 1024 * 1024) - SIGNAL_STACK_SIZE_WITHOUT_GUARD)
+ #else
+-#define PTHREAD_STACK_SIZE_DEFAULT ((1 * 1024 * 1024) - SIGNAL_STACK_SIZE_WITHOUT_GUARD)
++#define PTHREAD_STACK_SIZE_HARDENED ((1 * 1024 * 1024) - SIGNAL_STACK_SIZE_WITHOUT_GUARD)
+ #endif
+ 
+ // Leave room for a guard page in the internally created signal stacks.
+diff --git a/libc/libc.map.txt b/libc/libc.map.txt
+index c77e540..ae09d9f 100644
+--- a/libc/libc.map.txt
++++ b/libc/libc.map.txt
+@@ -425,7 +425,6 @@ LIBC {
+     get_nprocs; # introduced=23
+     get_nprocs_conf; # introduced=23
+     get_phys_pages; # introduced=23
+-    get_prog_id;
+     getaddrinfo;
+     getauxval;
+     getc;
+-- 
+2.55.0
+

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- LineageOS 24 (Android 17) GSI for the Ulefone Power Armor 18 (MT6877, kernel 4.19).
+     Derived from cawilliamson/treble_restlessos (android-17.0) configs/manifests/default.xml:
+     dropped the private signing keys, vndk-tests and Pixel fonts, plus the projects
+     LineageOS already ships (vendor/apn, packages/modules/ImsMedia). -->
+<manifest>
+  <remote name="cawilliamson" fetch="https://github.com/cawilliamson/" />
+
+  <project path="prebuilts/vndk/v28" name="platform/prebuilts/vndk/v28" remote="aosp" revision="204f1bad00aaf480ba33233f7b8c2ddaa03155dd" clone-depth="1" />
+  <project path="prebuilts/vndk/v29" name="platform/prebuilts/vndk/v29" remote="aosp" revision="bef5d37dda9360940964f097d612c8032e140961" clone-depth="1" />
+  <project path="prebuilts/vndk/v30" name="platform/prebuilts/vndk/v30" remote="aosp" revision="5f9884aa352825291757dfd6694b874ad8c1805e" clone-depth="1" />
+
+  <project path="packages/apps/QcRilAm" name="android_packages_apps_QcRilAm" remote="cawilliamson" revision="main" clone-depth="1" />
+  <project path="vendor/lptools" name="android_vendor_lptools" remote="cawilliamson" revision="main" clone-depth="1" />
+  <project path="device/phh/treble" name="android_device_phh_treble" remote="cawilliamson" revision="android-17.0" clone-depth="1" />
+  <project path="treble_app" name="android_treble_app" remote="cawilliamson" revision="main" clone-depth="1" />
+  <project path="vendor/cawilliamson" name="android_vendor_cawilliamson" remote="cawilliamson" revision="main" clone-depth="1" />
+  <project path="vendor/hardware_overlay" name="android_vendor_hardware_overlay" remote="cawilliamson" revision="main" clone-depth="1" />
+  <!-- resetprop_phh (used by rw-system.sh) -->
+  <project path="vendor/magisk" name="android_vendor_magisk" remote="cawilliamson" revision="main" clone-depth="1" />
+  <project path="vendor/interfaces" name="android_vendor_interfaces" remote="cawilliamson" revision="android-17.0" clone-depth="1" />
+
+  <!-- AVF/virtualization: unusable on kernel 4.19; device/phh/treble provides gsi_stubs for it
+       (same as cawilliamson's remove.xml) -->
+  <remove-project name="platform/packages/modules/Virtualization" />
+</manifest>

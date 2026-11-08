@@ -1,0 +1,128 @@
+From a1b539252b04cc891eecc31029e97a32192635b1 Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 03:14:45 +0100
+Subject: [PATCH] api: hide the restored FDE and network class APIs with @hide
+ block tags
+
+metalava no longer treats the leading inline {@hide} of these restored
+TrebleDroid APIs as hiding them, so they leaked into the public API and
+failed the UnflaggedApi check.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+Change-Id: I8f63c0dbe0e2de642c640cb06aa23e51eb240874
+---
+ .../android/os/storage/StorageManager.java    | 19 ++++++++++++-------
+ .../android/telephony/TelephonyManager.java   | 12 ++++++------
+ 2 files changed, 18 insertions(+), 13 deletions(-)
+
+diff --git a/core/java/android/os/storage/StorageManager.java b/core/java/android/os/storage/StorageManager.java
+index d2591cc28..19a134c3d 100644
+--- a/core/java/android/os/storage/StorageManager.java
++++ b/core/java/android/os/storage/StorageManager.java
+@@ -1713,7 +1713,8 @@ public class StorageManager {
+         return RoSystemProperties.CRYPTO_FILE_ENCRYPTED;
+     }
+ 
+-    /** {@hide}
++    /** @hide
++     *
+      * Is this device encryptable or already encrypted?
+      * @return true for encryptable or encrypted
+      *         false not encrypted and not encryptable
+@@ -1722,7 +1723,7 @@ public class StorageManager {
+         return RoSystemProperties.CRYPTO_ENCRYPTABLE;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * @deprecated Use {@link #isFileEncrypted} instead, since emulated FBE is no longer supported.
+      */
+     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+@@ -1731,7 +1732,8 @@ public class StorageManager {
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
++     *
+      * Is this device block encrypted?
+      * @return true for block encrypted. (Implies isEncrypted() == true)
+      *         false not encrypted or file encrypted
+@@ -1740,7 +1742,8 @@ public class StorageManager {
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
++     *
+      * Is this device block encrypted with credentials?
+      * @return true for crediential block encrypted.
+      *         (Implies isBlockEncrypted() == true)
+@@ -1750,7 +1753,8 @@ public class StorageManager {
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
++     *
+      * Is this device in the process of being block encrypted?
+      * @return true for encrypting.
+      *         false otherwise
+@@ -1764,7 +1768,8 @@ public class StorageManager {
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
++     *
+      * Is this device non default block encrypted and in the process of
+      * prompting for credentials?
+      * @return true for prompting for credentials.
+@@ -1779,7 +1784,7 @@ public class StorageManager {
+         return false;
+     }
+ 
+-    /** {@hide}
++    /** @hide
+      * @deprecated Use {@link #isFileEncrypted} instead, since emulated FBE is no longer supported.
+      */
+     @Deprecated
+diff --git a/telephony/java/android/telephony/TelephonyManager.java b/telephony/java/android/telephony/TelephonyManager.java
+index f9abce4ac..db0beb21d 100644
+--- a/telephony/java/android/telephony/TelephonyManager.java
++++ b/telephony/java/android/telephony/TelephonyManager.java
+@@ -3281,24 +3281,24 @@ public class TelephonyManager {
+         }
+     }
+ 
+-    /**
++    /*
+      * Network Class Definitions.
+      * Do not change this order, it is used for sorting during emergency calling in
+      * {@link TelephonyConnectionService#getFirstPhoneForEmergencyCall()}. Any newer technologies
+      * should be added after the current definitions.
+      */
+-    /** Unknown network class. {@hide} */
++    /** @hide Unknown network class. */
+     public static final int NETWORK_CLASS_UNKNOWN = 0;
+-    /** Class of broadly defined "2G" networks. {@hide} */
++    /** @hide Class of broadly defined "2G" networks. */
+     @UnsupportedAppUsage
+     public static final int NETWORK_CLASS_2_G = 1;
+-    /** Class of broadly defined "3G" networks. {@hide} */
++    /** @hide Class of broadly defined "3G" networks. */
+     @UnsupportedAppUsage
+     public static final int NETWORK_CLASS_3_G = 2;
+-    /** Class of broadly defined "4G" networks. {@hide} */
++    /** @hide Class of broadly defined "4G" networks. */
+     @UnsupportedAppUsage
+     public static final int NETWORK_CLASS_4_G = 3;
+-    /** Class of broadly defined "5G" networks. {@hide} */
++    /** @hide Class of broadly defined "5G" networks. */
+     public static final int NETWORK_CLASS_5_G = 4;
+ 
+     /**
+-- 
+2.56.0
+

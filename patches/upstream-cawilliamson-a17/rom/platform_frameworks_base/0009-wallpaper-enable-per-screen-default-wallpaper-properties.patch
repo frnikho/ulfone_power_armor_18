@@ -1,0 +1,60 @@
+From 0b0b06aa93c11eecb5e5491f1961dc05c6481791 Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Sat, 26 Sep 2026 21:33:52 +0100
+Subject: [PATCH 9/21] wallpaper: enable per-screen default wallpaper properties
+
+openRawDefaultWallpaper() hardcoded the system wallpaper property and
+resource for both home and lock screens; the per-flag branch was left
+commented out upstream (factory-default lock wallpapers are not yet
+supported). enable it: FLAG_LOCK now reads ro.config.lock_wallpaper
+with no drawable fallback, FLAG_SYSTEM keeps ro.config.wallpaper and
+the framework default_wallpaper resource.
+
+lets a rom ship distinct default home and lock wallpapers via
+ro.config.wallpaper and ro.config.lock_wallpaper.
+---
+ core/java/android/app/WallpaperManager.java | 21 +++++++++------------
+ 1 file changed, 9 insertions(+), 12 deletions(-)
+
+diff --git a/core/java/android/app/WallpaperManager.java b/core/java/android/app/WallpaperManager.java
+index 2e1f13c8a..443742029 100644
+--- a/core/java/android/app/WallpaperManager.java
++++ b/core/java/android/app/WallpaperManager.java
+@@ -3473,14 +3473,9 @@ public class WallpaperManager {
+      */
+     public static InputStream openRawDefaultWallpaper(Context context,
+             @SetWallpaperFlags int which) {
+-        final String whichProp;
+-        final int defaultResId;
+-        /* Factory-default lock wallpapers are not yet supported.
+-        whichProp = which == FLAG_LOCK ? PROP_LOCK_WALLPAPER : PROP_WALLPAPER;
+-        defaultResId = which == FLAG_LOCK ? R.drawable.default_lock_wallpaper :  ....
+-        */
+-        whichProp = PROP_WALLPAPER;
+-        defaultResId = R.drawable.default_wallpaper;
++        final String whichProp = which == FLAG_LOCK ? PROP_LOCK_WALLPAPER : PROP_WALLPAPER;
++        final int defaultResId =
++                which == FLAG_LOCK ? 0 : R.drawable.default_wallpaper;
+         final String path = SystemProperties.get(whichProp);
+         final InputStream wallpaperInputStream = getWallpaperInputStream(path);
+         if (wallpaperInputStream != null) {
+@@ -3491,10 +3486,12 @@ public class WallpaperManager {
+         if (cmfWallpaperInputStream != null) {
+             return cmfWallpaperInputStream;
+         }
+-        try {
+-            return context.getResources().openRawResource(defaultResId);
+-        } catch (NotFoundException e) {
+-            // no default defined for this device; this is not a failure
++        if (defaultResId != 0) {
++            try {
++                return context.getResources().openRawResource(defaultResId);
++            } catch (NotFoundException e) {
++                // no default defined for this device; this is not a failure
++            }
+         }
+         return null;
+     }
+-- 
+2.55.0
+

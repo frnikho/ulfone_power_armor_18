@@ -1,0 +1,117 @@
+From f05d0e1bb772dc92820173f0cd2b5a775dc0c974 Mon Sep 17 00:00:00 2001
+From: Langsdorff <131063968+clangsdorff@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 21:25:41 +0300
+Subject: [PATCH 20/21] OverlayConfig: only honour vendor overlays for
+ vendor-facing targets
+
+---
+ .../internal/content/om/OverlayConfig.java    | 70 +++++++++++++++++++
+ 1 file changed, 70 insertions(+)
+
+diff --git a/core/java/com/android/internal/content/om/OverlayConfig.java b/core/java/com/android/internal/content/om/OverlayConfig.java
+index 38593b4a2..28df6f249 100644
+--- a/core/java/com/android/internal/content/om/OverlayConfig.java
++++ b/core/java/com/android/internal/content/om/OverlayConfig.java
+@@ -50,8 +50,10 @@ import java.util.Arrays;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.HashMap;
++import java.util.HashSet;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Set;
+ import java.util.function.Supplier;
+ 
+ import javax.xml.parsers.DocumentBuilder;
+@@ -127,6 +129,26 @@ public class OverlayConfig {
+         return comparedPriority == 0 ? o1.path.compareTo(o2.path) : comparedPriority;
+     };
+ 
++    // Vendor overlays are built against the vendor's own system image, so their references into
++    // system apps point at unrelated or missing resources here. Only these targets are honoured.
++    private static final Set<String> VENDOR_OVERLAY_TARGETS = Set.of(
++            "android",
++            "com.android.bluetooth",
++            "com.android.carrierconfig",
++            "com.android.cellbroadcastreceiver",
++            "com.android.cellbroadcastreceiver.module",
++            "com.android.cellbroadcastservice",
++            "com.android.connectivity.resources",
++            "com.android.networkstack",
++            "com.android.networkstack.tethering",
++            "com.android.nfc",
++            "com.android.phone",
++            "com.android.providers.settings",
++            "com.android.providers.telephony",
++            "com.android.server.telecom",
++            "com.android.uwb.resources",
++            "com.android.wifi.resources");
++
+     // Map of overlay package name to configured overlay settings
+     private final ArrayMap<String, Configuration> mConfigurations = new ArrayMap<>();
+ 
+@@ -209,6 +231,9 @@ public class OverlayConfig {
+             overlays.addAll(partitionConfigs);
+         }
+ 
++        removeUnsupportedVendorOverlays(overlays, partitions, packageManagerOverlayInfos,
++                packageProvider);
++
+         for (int i = 0, n = overlays.size(); i < n; i++) {
+             // Add the configurations to a map so definitions of an overlay in an earlier
+             // partition can be replaced by an overlay with the same package name in a later
+@@ -218,6 +243,51 @@ public class OverlayConfig {
+         }
+     }
+ 
++    private static boolean isVendorPolicy(@NonNull String policy) {
++        return OverlayPartition.POLICY_VENDOR.equals(policy)
++                || OverlayPartition.POLICY_ODM.equals(policy)
++                || OverlayPartition.POLICY_OEM.equals(policy);
++    }
++
++    private static void removeUnsupportedVendorOverlays(
++            @NonNull ArrayList<ParsedConfiguration> overlays,
++            @NonNull List<OverlayPartition> partitions,
++            @Nullable Map<String, ParsedOverlayInfo> packageManagerOverlayInfos,
++            @Nullable PackageProvider packageProvider) {
++        final HashSet<String> vendorPackages = new HashSet<>();
++        if (packageProvider != null) {
++            packageProvider.forEachPackage((PackageProvider.Package p, Boolean isSystem,
++                    @Nullable File preInstalledApexPath) -> {
++                final File path = new File(p.getBaseApkPath());
++                for (int i = 0, n = partitions.size(); i < n; i++) {
++                    final OverlayPartition partition = partitions.get(i);
++                    if (isVendorPolicy(partition.policy) && partition.containsFile(path)) {
++                        vendorPackages.add(p.getPackageName());
++                        return;
++                    }
++                }
++            });
++        }
++
++        for (int i = overlays.size() - 1; i >= 0; i--) {
++            final ParsedConfiguration config = overlays.get(i);
++            if (!isVendorPolicy(config.policy)) {
++                continue;
++            }
++            ParsedOverlayInfo info = config.parsedInfo;
++            if (info == null && packageManagerOverlayInfos != null) {
++                info = packageManagerOverlayInfos.get(config.packageName);
++            }
++            if (info == null || VENDOR_OVERLAY_TARGETS.contains(info.targetPackageName)
++                    || vendorPackages.contains(info.targetPackageName)) {
++                continue;
++            }
++            Log.i(TAG, "ignoring vendor overlay " + config.packageName + " targeting "
++                    + info.targetPackageName);
++            overlays.remove(i);
++        }
++    }
++
+     private static String generatePartitionOrderString(List<OverlayPartition> partitions) {
+         if (partitions == null || partitions.size() == 0) {
+             return "";
+-- 
+2.56.0
+

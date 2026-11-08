@@ -1,0 +1,30 @@
+From 08311d23ad8f4371b2a13a25168a3dea67944942 Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 23:02:56 +0100
+Subject: [PATCH] charger: skip the phh charger images on LineageOS builds
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+---
+ charger/Android.mk | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/charger/Android.mk b/charger/Android.mk
+index cc18272..77584d7 100644
+--- a/charger/Android.mk
++++ b/charger/Android.mk
+@@ -1,3 +1,5 @@
++# LineageOS builds ship vendor/lineage/charger, which installs the same files
++ifeq ($(LINEAGE_BUILD),)
+ #
+ # Copyright (C) 2020 Raphielscape LLC. and Haruka LLC.
+ #
+@@ -66,3 +68,5 @@ _add-product-charger-animation-file :=
+ _img_modules :=
+ _anim_modules :=
+ endif # LOCAL_CHARGER_NO_UI
++
++endif # LINEAGE_BUILD
+-- 
+2.56.0
+

@@ -1,0 +1,45 @@
+# --- Gros binaires / reproductibles (391G hors repo) ---
+/build/
+/out/
+/stock/
+/gsi/
+/apks/
+/tools/dl/
+/tools/mtkvenv/
+/custom/apex/
+
+# Images & archives
+*.img
+*.img.xz
+*.raw.gz
+*.tar
+*.tar.gz
+*.zip
+*.apex
+
+# Logs / runtime
+*.log
+*.pid
+__pycache__/
+*.pyc
+
+# IDE
+/.idea/
+
+# --- Privé (IMEI, n° série, BSSID, clés) ---
+/notes/bootlogs/
+/custom/keys/
+/custom/adb_keys
+*.pem
+*.keystore
+*.jks
+
+# --- Blobs propriétaires (non redistribuables) ---
+/custom/priv-apps/
+
+# --- Artefacts de build (reproductibles depuis les sources) ---
+/apps/toolbox/build/
+*.apk
+*.idsig
+*.dex
+*.class

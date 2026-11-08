@@ -1,0 +1,28 @@
+From d287a09dd64ccd0d5cd5f809034a68c4cd8a208a Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:43:53 +0100
+Subject: [PATCH] Settings: drop the remaining framework-virtualization stub
+ deps (tests)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+Change-Id: I7a4c291c4f9d5b6fa6de126af862f2010d2ab030
+---
+ tests/robotests/Android.bp | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/tests/robotests/Android.bp b/tests/robotests/Android.bp
+index 4ebee9e..b7d3df6 100644
+--- a/tests/robotests/Android.bp
++++ b/tests/robotests/Android.bp
+@@ -91,7 +91,6 @@ android_robolectric_test {
+ 
+     libs: [
+         "android.test.mock.impl",
+-        "framework-virtualization.stubs.system",
+         "ims-common",
+         "telephony-common",
+     ],
+-- 
+2.56.0
+

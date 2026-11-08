@@ -1,0 +1,159 @@
+From 1454b1650cf527888674d80723f7a756303f8298 Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Mon, 28 Sep 2026 08:40:32 +0100
+Subject: [PATCH 2/3] gsi: product trim adjustments
+
+gsi product trims: restore vndk compat symlinks for legacy vendor
+partitions, drop the stock deskclock, calculator and music apps in
+favour of the rom replacements, drop the vanadium browser (trichrome
+chrome) while keeping the trichrome webview provider the platform
+requires, drop the traceur system tracing ui, drop the aosp gallery
+(gallery2), and drop the com.android.virt apex with its
+framework-virtualization boot jar declaration. platform_bootclasspath
+derives jar deps from PRODUCT_APEX_BOOT_JARS; without removing the
+declaration, soong fails to find framework-virtualization in the
+com.android.virt apex once its bootclasspath fragment is gone.
+---
+ target/product/base_system.mk        |  1 -
+ target/product/default_art_config.mk |  1 -
+ target/product/gsi/Android.bp        | 56 +++++++++++++++++++++++++++-
+ target/product/handheld_product.mk   |  5 ---
+ target/product/handheld_system.mk    |  1 -
+ 5 files changed, 55 insertions(+), 9 deletions(-)
+
+diff --git a/target/product/base_system.mk b/target/product/base_system.mk
+index 0c4d1e4..d3cdb89 100644
+--- a/target/product/base_system.mk
++++ b/target/product/base_system.mk
+@@ -86,7 +86,6 @@ PRODUCT_PACKAGES += \
+     $(RELEASE_PACKAGE_TZDATA_MODULE) \
+     com.android.uprobestats \
+     com.android.uwb \
+-    com.android.virt \
+     com.android.wifi \
+     ContactsProvider \
+     content \
+diff --git a/target/product/default_art_config.mk b/target/product/default_art_config.mk
+index 7689dd0..4df5c26 100644
+--- a/target/product/default_art_config.mk
++++ b/target/product/default_art_config.mk
+@@ -89,7 +89,6 @@ PRODUCT_APEX_BOOT_JARS := \
+     com.android.tethering:framework-connectivity-b \
+     com.android.tethering:framework-tethering \
+     com.android.uwb:framework-uwb \
+-    com.android.virt:framework-virtualization \
+     com.android.wifi:framework-wifi \
+
+ # When we release ondeviceintelligence in NeuralNetworks module
+diff --git a/target/product/gsi/Android.bp b/target/product/gsi/Android.bp
+index 1dea323..0ebd40b 100644
+--- a/target/product/gsi/Android.bp
++++ b/target/product/gsi/Android.bp
+@@ -74,6 +74,60 @@ gsi_symlinks = [
+     },
+ ]
+
++// compat symlinks for legacy vendor partitions: pre-q vendor ld.config.txt files
++// hardcode /system/${LIB}/vndk-${VER} and vndk-sp-${VER} search paths. point them
++// into the matching vndk apex so those paths keep resolving on old devices.
++vndk_compat_symlinks = [
++    {
++        target: "/apex/com.android.vndk.v28/lib",
++        name: "lib/vndk-28",
++    },
++    {
++        target: "/apex/com.android.vndk.v28/lib64",
++        name: "lib64/vndk-28",
++    },
++    {
++        target: "/apex/com.android.vndk.v28/lib",
++        name: "lib/vndk-sp-28",
++    },
++    {
++        target: "/apex/com.android.vndk.v28/lib64",
++        name: "lib64/vndk-sp-28",
++    },
++    {
++        target: "/apex/com.android.vndk.v29/lib",
++        name: "lib/vndk-29",
++    },
++    {
++        target: "/apex/com.android.vndk.v29/lib64",
++        name: "lib64/vndk-29",
++    },
++    {
++        target: "/apex/com.android.vndk.v29/lib",
++        name: "lib/vndk-sp-29",
++    },
++    {
++        target: "/apex/com.android.vndk.v29/lib64",
++        name: "lib64/vndk-sp-29",
++    },
++    {
++        target: "/apex/com.android.vndk.v30/lib",
++        name: "lib/vndk-30",
++    },
++    {
++        target: "/apex/com.android.vndk.v30/lib64",
++        name: "lib64/vndk-30",
++    },
++    {
++        target: "/apex/com.android.vndk.v30/lib",
++        name: "lib/vndk-sp-30",
++    },
++    {
++        target: "/apex/com.android.vndk.v30/lib64",
++        name: "lib64/vndk-sp-30",
++    },
++]
++
+ android_filesystem_defaults {
+     name: "android_gsi_defaults",
+     defaults: [
+@@ -81,7 +135,7 @@ android_filesystem_defaults {
+         "system_ext_image_defaults",
+         "product_image_defaults",
+     ],
+-    symlinks: gsi_symlinks,
++    symlinks: gsi_symlinks + vndk_compat_symlinks,
+     dirs: ["cache"],
+     deps: [
+         ///////////////////////////////////////////
+diff --git a/target/product/handheld_product.mk b/target/product/handheld_product.mk
+index b276cf9..7a93d49 100644
+--- a/target/product/handheld_product.mk
++++ b/target/product/handheld_product.mk
+@@ -24,18 +24,13 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/media_product.mk)
+ PRODUCT_PACKAGES += \
+     AppStore \
+     Contacts \
+-    DeskClock \
+-    ExactCalculator \
+-    Gallery2 \
+     LatinIME \
+-    Music \
+     preinstalled-packages-platform-handheld-product.xml \
+     SettingsIntelligence \
+     SpeechServices \
+     talkback \
+     ThemePicker \
+     ThemesStub \
+-    TrichromeChrome \
+     frameworks-base-overlays
+
+ PRODUCT_PACKAGES_DEBUG += \
+diff --git a/target/product/handheld_system.mk b/target/product/handheld_system.mk
+index 83170ad..b7113d3 100644
+--- a/target/product/handheld_system.mk
++++ b/target/product/handheld_system.mk
+@@ -70,7 +70,6 @@ PRODUCT_PACKAGES += \
+     SharedStorageBackup \
+     SimAppDialog \
+     TeleService \
+-    Traceur \
+     UserDictionaryProvider \
+     VpnDialogs \
+     vr \
+-- 
+2.56.0
+

@@ -1,0 +1,44 @@
+From 793f743977185678af743b4813d5e3bc0a8a1079 Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:50:51 +0100
+Subject: [PATCH] gsi: drop the com.android.virt apex and its
+ framework-virtualization boot jar
+
+Virtualization part of cawilliamson personal/platform_build/0002 (gsi product trim),
+ported onto LineageOS 24.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+Change-Id: Iee24b4bf9562b80fd446c4370c916af1459d297a
+---
+ target/product/base_system.mk        | 1 -
+ target/product/default_art_config.mk | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/target/product/base_system.mk b/target/product/base_system.mk
+index b84747b..edc4ab2 100644
+--- a/target/product/base_system.mk
++++ b/target/product/base_system.mk
+@@ -86,7 +86,6 @@ PRODUCT_PACKAGES += \
+     $(RELEASE_PACKAGE_TZDATA_MODULE) \
+     com.android.uprobestats \
+     com.android.uwb \
+-    com.android.virt \
+     com.android.wifi \
+     ContactsProvider \
+     content \
+diff --git a/target/product/default_art_config.mk b/target/product/default_art_config.mk
+index b7dbe11..dca7ca1 100644
+--- a/target/product/default_art_config.mk
++++ b/target/product/default_art_config.mk
+@@ -89,7 +89,6 @@ PRODUCT_APEX_BOOT_JARS := \
+     com.android.tethering:framework-connectivity-b \
+     com.android.tethering:framework-tethering \
+     com.android.uwb:framework-uwb \
+-    com.android.virt:framework-virtualization \
+     com.android.wifi:framework-wifi \
+ 
+ # When we release ondeviceintelligence in NeuralNetworks module
+-- 
+2.56.0
+

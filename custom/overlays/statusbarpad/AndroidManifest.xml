@@ -1,0 +1,4 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="me.nico.overlay.statusbarpad" android:versionCode="1">
+    <overlay android:targetPackage="com.android.systemui" />
+    <application android:hasCode="false" />
+</manifest>

@@ -1,0 +1,6 @@
+platform_packages_apps_Settings/0003-Hide-OEM-unlocking-toggle-from-Developer-Options.patch
+platform_frameworks_base/0032-vpn-stop-turning-newly-authorized-vpn-apps-into-alwa.patch
+platform_packages_apps_GmsCompat/0001-gmscompat-keep-play-store-install-prompts-visible.patch
+platform_device_phh_treble/0042-partner-wallpapers-browse-and-download-wallpapers-fr.patch
+platform_system_security/0002-keystore2-pass-the-qti-fbe-ice-tag-through-km_compat.patch
+platform_frameworks_base/0019-core-api-restored-fde-and-network-class-entries.patch

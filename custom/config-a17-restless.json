@@ -1,0 +1,57 @@
+{
+  "base_image": "/lab/ulphone/gsi/a17-restless/RestlessOS-arm64-ab-17.0.0-202610280533.img",
+  "output_image": "/lab/ulphone/out/system-restless-a17.img",
+  "remove": [
+    "/system/apex/com.android.virt.apex",
+    "/system/etc/init/phh-remotectl.rc",
+    "/system/bin/phh-remotectl.sh",
+    "/system/bin/dbclient"
+  ],
+  "props": {
+    "/system/build.prop": {
+      "ro.product.system.brand": "Ulefone",
+      "ro.product.system.device": "Power_Armor_18",
+      "ro.product.system.manufacturer": "Ulefone",
+      "ro.product.system.model": "Power Armor 18",
+      "ro.product.system.name": "Power_Armor_18_EEA",
+      "debug.phh.props.ice.trustkernel": "keymaster",
+      "ro.keymaster.xxx.release": "13",
+      "ro.keymaster.xxx.security_patch": "2023-11-05",
+      "ro.keymaster.xxx.vbmeta_state": "unlocked",
+      "ro.keymaster.xxx.verifiedbootstate": "orange",
+      "ro.keymaster.mod": "Power Armor 18",
+      "ro.keymaster.brn": "Ulefone",
+      "ro.adb.secure": "0",
+      "persist.sys.usb.config": "adb"
+    },
+    "/system/product/etc/build.prop": {
+      "ro.product.product.brand": "Ulefone",
+      "ro.product.product.device": "Power_Armor_18",
+      "ro.product.product.manufacturer": "Ulefone",
+      "ro.product.product.model": "Power Armor 18",
+      "ro.product.product.name": "Power_Armor_18_EEA"
+    },
+    "/system/system_ext/etc/build.prop": {
+      "ro.product.system_ext.brand": "Ulefone",
+      "ro.product.system_ext.device": "Power_Armor_18",
+      "ro.product.system_ext.manufacturer": "Ulefone",
+      "ro.product.system_ext.model": "Power Armor 18",
+      "ro.product.system_ext.name": "Power_Armor_18_EEA"
+    }
+  },
+  "apps_dir": "/lab/ulphone/custom/apps",
+  "apps_install_dir": "/system/product/app",
+  "avb": {
+    "key": "/lab/ulphone/custom/keys/testkey_rsa2048.pem",
+    "algorithm": "SHA256_RSA2048",
+    "rollback_index": 1791158400
+  },
+  "edit_files": {
+    "/system/bin/rw-system.sh": [
+      [
+        "if ! getprop ro.product.vendor.model | grep -q -e oppo6771; then\n    fixSPL\nfi\n",
+        "# nico: skip fixSPL on the Power Armor 18. Its TrustKernel TEE only accepts the stock identity/SPL\n# (exposed by the GSI build.props); patching and restarting teed breaks the keymaster root of trust.\nif ! getprop ro.product.vendor.model | grep -q -e oppo6771 -e 'Power Armor 18'; then\n    fixSPL\nfi\n"
+      ]
+    ]
+  }
+}

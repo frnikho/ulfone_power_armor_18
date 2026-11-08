@@ -1,0 +1,189 @@
+From 72a8f09641e682334221b3399418a2f636d0bc94 Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Fri, 25 Sep 2026 18:15:31 +0100
+Subject: [PATCH 1/2] Configure build for GrapheneOS GSI: apps and packages
+
+Adapt the AOSP build configuration for GrapheneOS GSI:
+
+- Replace generic webview module with TrichromeWebView (Vanadium)
+- Use GrapheneOS TrichromeChrome as browser (replaces Browser2)
+- Remove QuickSearchBox (not in GrapheneOS)
+- Remove Camera and Messaging from GSI product -- users install from
+  GrapheneOS App Store to save system image space
+- Remove packages that are not useful or not desired in GSI builds:
+  Calendar (deprecated, CalendarProvider kept), MusicFX, Auditor
+  (requires hardware attestation), PdfViewerGOS, InfoApp,
+  DeviceDiagnostics, EasterEgg, HardeningTestApp, LiveWallpapersPicker
+  (deprecated), PhotoTable, WallpaperPickerGOS, ContactsGOS (use AOSP
+  Contacts), BluetoothViewerGOS, TalkBackGOS (use standard TalkBack
+  included in handheld_product.mk), GrapheneOS Updater (only useful for
+  official GrapheneOS devices)
+- Remove LogViewer from GSI system image
+- Exclude AOSP sample APN list from GSI build
+- Use the GrapheneOS Messaging soong module name (external/Messaging)
+  in gsi/Android.bp so aosp_system_image does not depend on an
+  undefined module, which fails soong bootstrap
+
+Combines the former 'Configure build for GrapheneOS GSI: apps and
+packages' and 'Use GrapheneOS Messaging module name in GSI system
+image' patches.
+---
+ target/product/base_system.mk         | 3 ---
+ target/product/generic/Android.bp     | 5 +----
+ target/product/gsi/Android.bp         | 9 +++------
+ target/product/handheld_product.mk    | 5 -----
+ target/product/handheld_system.mk     | 4 ----
+ target/product/handheld_system_ext.mk | 1 -
+ 6 files changed, 4 insertions(+), 23 deletions(-)
+
+diff --git a/target/product/base_system.mk b/target/product/base_system.mk
+index 8f2cc28..0c4d1e4 100644
+--- a/target/product/base_system.mk
++++ b/target/product/base_system.mk
+@@ -238,8 +238,6 @@ PRODUCT_PACKAGES += \
+     mm_daemon \
+     mm_daemon_setup \
+     monkey \
+-    misctrl \
+-    mtectrl \
+     ndc \
+     netd \
+     NetworkStack \
+@@ -614,7 +612,6 @@ PRODUCT_PACKAGES_DEBUG := \
+     unwind_info \
+     unwind_reg_info \
+     unwind_symbols \
+-    HardeningTestApp \
+     SecurePasteTestSystemApp \
+ 
+ # The set of packages whose code can be loaded by the system server.
+diff --git a/target/product/generic/Android.bp b/target/product/generic/Android.bp
+index 413a9e6..36db8d0 100644
+--- a/target/product/generic/Android.bp
++++ b/target/product/generic/Android.bp
+@@ -426,7 +426,7 @@ android_filesystem_defaults {
+         ///////////////////////////////////////////
+         // media_product
+         ///////////////////////////////////////////
+-        "webview",
++        "TrichromeWebView",
+         "preinstalled-packages-media-product.xml",
+         ///////////////////////////////////////////
+         // base_product
+@@ -741,7 +741,6 @@ system_image_defaults {
+         default: [],
+     }) + select(product_variable("debuggable"), {
+         true: [
+-            "HardeningTestApp", // base_system
+             "SecurePasteTestSystemApp", // base_system
+             "alloctop",
+             "adevice_fingerprint",
+@@ -859,11 +858,9 @@ system_image_defaults {
+                 "KeyChain", // handheld_system
+                 "LiveWallpapersPicker", // generic_system, full_base
+                 "LocalTransport", // base_system
+-                "LogViewer", // handheld_system
+                 "ManagedProvisioning", // handheld_system
+                 "MmsService", // handheld_system
+                 "MtpService", // handheld_system
+-                "MusicFX", // handheld_system
+                 "NetworkLocation", // handheld_system
+                 "NetworkStack", // base_system
+                 "ONS", // telephony_system
+diff --git a/target/product/gsi/Android.bp b/target/product/gsi/Android.bp
+index 2ec2eb6..1dea323 100644
+--- a/target/product/gsi/Android.bp
++++ b/target/product/gsi/Android.bp
+@@ -122,12 +122,10 @@ android_filesystem_defaults {
+         ///////////////////////////////////////////
+         // gsi_product
+         ///////////////////////////////////////////
+-        "Browser2",
+-        "Camera2",
+         "Dialer",
+         "LatinIME",
+-        "messaging",
+-        "apns-full-conf.xml",
++        "Messaging",
++        "TrichromeChrome",
+         "frameworks-base-overlays",
+         "preinstalled-packages-base-product.xml",
+ 
+@@ -193,13 +191,12 @@ android_system_image {
+         "preinstalled-packages-platform-telephony-system-ext.xml",
+ 
+         // handheld_product
+-        "Calendar",
+         "Contacts",
+         "DeskClock",
+         "Gallery2",
++        "LiveWallpapersPicker",
+         "Music",
+         "preinstalled-packages-platform-handheld-product.xml",
+-        "QuickSearchBox",
+         "SettingsIntelligence",
+         "frameworks-base-overlays",
+ 
+diff --git a/target/product/handheld_product.mk b/target/product/handheld_product.mk
+index 2a4602d..b276cf9 100644
+--- a/target/product/handheld_product.mk
++++ b/target/product/handheld_product.mk
+@@ -23,17 +23,12 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/media_product.mk)
+ # /product packages
+ PRODUCT_PACKAGES += \
+     AppStore \
+-    Auditor \
+-    Calendar \
+-    Camera \
+     Contacts \
+     DeskClock \
+     ExactCalculator \
+     Gallery2 \
+-    InfoApp \
+     LatinIME \
+     Music \
+-    PdfViewerGOS \
+     preinstalled-packages-platform-handheld-product.xml \
+     SettingsIntelligence \
+     SpeechServices \
+diff --git a/target/product/handheld_system.mk b/target/product/handheld_system.mk
+index 029bdd6..83170ad 100644
+--- a/target/product/handheld_system.mk
++++ b/target/product/handheld_system.mk
+@@ -47,21 +47,17 @@ PRODUCT_PACKAGES += \
+     CertInstaller \
+     CredentialManager \
+     DeviceAsWebcam \
+-    DeviceDiagnostics \
+     DocumentsUI \
+     DownloadProviderUi \
+-    EasterEgg \
+     ExternalStorageProvider \
+     FusedLocation \
+     GmsCompat \
+     InputDevices \
+     KeyChain \
+     librs_jni \
+-    LogViewer \
+     ManagedProvisioning \
+     MmsService \
+     MtpService \
+-    MusicFX \
+     NetworkLocation \
+     PacProcessor \
+     preinstalled-packages-platform-handheld-system.xml \
+diff --git a/target/product/handheld_system_ext.mk b/target/product/handheld_system_ext.mk
+index 529fa6f..cf9b894 100644
+--- a/target/product/handheld_system_ext.mk
++++ b/target/product/handheld_system_ext.mk
+@@ -27,7 +27,6 @@ PRODUCT_PACKAGES += \
+     Launcher3QuickStep \
+     Provision \
+     Settings \
+-    SetupWizard2 \
+     StorageManager \
+     SystemUI \
+     WallpaperCropper \
+-- 
+2.50.1 (Apple Git-155)
+

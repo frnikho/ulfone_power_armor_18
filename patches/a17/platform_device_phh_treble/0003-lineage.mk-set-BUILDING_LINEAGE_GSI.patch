@@ -1,0 +1,28 @@
+From 6cdfdafdf0ce2cae44bb33a54b5a76b519d3cdea Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:45:43 +0100
+Subject: [PATCH] lineage.mk: set BUILDING_LINEAGE_GSI
+
+Without it the AOSP soong aosp_system_image stays enabled and pulls AOSP-only apps
+(Calendar, ...) that LineageOS does not ship.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+---
+ lineage.mk | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/lineage.mk b/lineage.mk
+index 172bb01..33e84cc 100644
+--- a/lineage.mk
++++ b/lineage.mk
+@@ -1,3 +1,6 @@
+ $(call inherit-product, vendor/lineage/config/common_full_phone.mk)
+ -include vendor/lineage/build/core/config.mk
+ -include vendor/lineage/build/core/apicheck.mk
++
++# LineageOS GSI: disables the AOSP-only soong system image (aosp_system_image) and enables LineageOS GSI tweaks
++BUILDING_LINEAGE_GSI := true
+-- 
+2.56.0
+

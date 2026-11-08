@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MediaTek framework overlay sets both to 61, which caps rendering at ~60 Hz unless min_refresh_rate is forced.
+     0 = no default constraint: the user's peak (120) applies and SurfaceFlinger can drop to 60 Hz when idle. -->
+<resources>
+    <integer name="config_defaultRefreshRate">0</integer>
+    <integer name="config_defaultPeakRefreshRate">0</integer>
+</resources>

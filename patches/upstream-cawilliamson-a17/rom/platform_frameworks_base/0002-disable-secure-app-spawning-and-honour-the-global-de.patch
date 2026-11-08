@@ -1,0 +1,61 @@
+From 7a5db1da4bc3d7b696856976b6ebd56c06a7e0d1 Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Mon, 12 Oct 2026 14:00:17 +0100
+Subject: [PATCH 2/21] disable secure app spawning and honour the global default
+
+exec-based app spawning re-execs app_process into a fresh image, losing
+the modified zygote environment that root integrations (zygisk) depend
+on, and hardened_malloc is not compiled into this GSI, so its extended
+virtual address space reservation is never used either.
+
+default persist.security.exec_spawn to false and drop the per-app
+compat-config override from AswUseExecSpawning so every app follows
+the global default instead of being forced onto the exec spawning path
+by the appcompatconfig table (notably gms). users can still enable exec
+spawning per app from settings when wanted.
+---
+ core/java/android/ext/settings/ExtSettings.java            | 2 +-
+ core/java/android/ext/settings/app/AswUseExecSpawning.java | 7 ++++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/core/java/android/ext/settings/ExtSettings.java b/core/java/android/ext/settings/ExtSettings.java
+index b0eb63aa3..64fd7af74 100644
+--- a/core/java/android/ext/settings/ExtSettings.java
++++ b/core/java/android/ext/settings/ExtSettings.java
+@@ -22,7 +22,7 @@ import java.util.function.ToIntFunction;
+ public class ExtSettings {
+ 
+     public static final BoolSysProperty EXEC_SPAWNING = new BoolSysProperty(
+-            "persist.security.exec_spawn", true);
++            "persist.security.exec_spawn", false);
+ 
+     public static final BoolSetting ALLOW_KEYGUARD_CAMERA = new BoolSetting(
+             Setting.Scope.SYSTEM_PROPERTY, "persist.keyguard.camera", true);
+diff --git a/core/java/android/ext/settings/app/AswUseExecSpawning.java b/core/java/android/ext/settings/app/AswUseExecSpawning.java
+index a833aae2c..faa966b63 100644
+--- a/core/java/android/ext/settings/app/AswUseExecSpawning.java
++++ b/core/java/android/ext/settings/app/AswUseExecSpawning.java
+@@ -7,8 +7,6 @@ import android.content.pm.GosPackageState;
+ import android.content.pm.GosPackageStateFlag;
+ import android.ext.settings.ExtSettings;
+ 
+-import com.android.server.os.nano.AppCompatProtos;
+-
+ /** @hide */
+ public class AswUseExecSpawning extends AppSwitch {
+     public static final AswUseExecSpawning I = new AswUseExecSpawning();
+@@ -16,7 +14,10 @@ public class AswUseExecSpawning extends AppSwitch {
+     private AswUseExecSpawning() {
+         gosPsFlag = GosPackageStateFlag.USE_EXEC_SPAWNING;
+         gosPsFlagNonDefault = GosPackageStateFlag.USE_EXEC_SPAWNING_NON_DEFAULT;
+-        compatChangeToDisableHardening = AppCompatProtos.USE_ZYGOTE_SPAWNING;
++        // no compat-config override: exec spawning follows the global default for every
++        // app. the appcompatconfig table forced it on for "known compatible" apps
++        // (notably gms), and exec spawning re-execs app_process, losing all zygote hook
++        // injection (zygisk)
+     }
+ 
+     public static boolean isEnabledFor(Context ctx, @UserIdInt int userId, ApplicationInfo appInfo,
+-- 
+2.55.0
+

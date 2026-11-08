@@ -1,0 +1,61 @@
+From 6f969691030aedb2851684be596bf6fb1d466994 Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Mon, 12 Oct 2026 13:52:58 +0100
+Subject: [PATCH 15/21] disable and always honour the off default for extended VA space
+
+the GSI uses the Scudo allocator: hardened_malloc is not compiled into
+bionic, so the extended virtual address space that exists to support it
+is never available. drop the compat-config override (which forced the
+setting on for every app in the appcompatconfig table) and the
+immutable-on rule keyed off the hardened malloc switch, and default the
+switch to off.
+---
+ .../ext/settings/app/AswUseExtendedVaSpace.java    | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
+
+diff --git a/core/java/android/ext/settings/app/AswUseExtendedVaSpace.java b/core/java/android/ext/settings/app/AswUseExtendedVaSpace.java
+index 3b1e07327..81e808966 100644
+--- a/core/java/android/ext/settings/app/AswUseExtendedVaSpace.java
++++ b/core/java/android/ext/settings/app/AswUseExtendedVaSpace.java
+@@ -6,8 +6,6 @@ import android.content.pm.GosPackageState;
+ import android.content.pm.GosPackageStateFlag;
+ import android.os.Build;
+ 
+-import com.android.server.os.nano.AppCompatProtos;
+-
+ import java.util.Objects;
+ 
+ import dalvik.system.VMRuntime;
+@@ -19,17 +17,13 @@ public class AswUseExtendedVaSpace extends AppSwitch {
+     private AswUseExtendedVaSpace() {
+         gosPsFlag = GosPackageStateFlag.USE_EXTENDED_VA_SPACE;
+         gosPsFlagNonDefault = GosPackageStateFlag.USE_EXTENDED_VA_SPACE_NON_DEFAULT;
+-        compatChangeToDisableHardening = AppCompatProtos.DISABLE_EXTENDED_VA_SPACE;
++        // no compat-config override and default off: this GSI uses the Scudo allocator, so the
++        // extended VA space that exists to support hardened_malloc is never available here
+     }
+ 
+     @Override
+     public Boolean getImmutableValue(Context ctx, int userId, ApplicationInfo appInfo,
+                                      GosPackageState ps, StateInfo si) {
+-        if (AswUseHardenedMalloc.I.get(ctx, userId, appInfo, ps)) {
+-            si.immutabilityReason = IR_REQUIRED_BY_HARDENED_MALLOC;
+-            return Boolean.TRUE;
+-        }
+-
+         String primaryAbi = appInfo.primaryCpuAbi;
+         if (primaryAbi != null) {
+             String isa = Objects.requireNonNull(VMRuntime.getInstructionSet(primaryAbi));
+@@ -75,6 +69,8 @@ public class AswUseExtendedVaSpace extends AppSwitch {
+     @Override
+     protected boolean getDefaultValueInner(Context ctx, int userId, ApplicationInfo appInfo,
+                                            GosPackageState ps, StateInfo si) {
+-        return true;
++        // this GSI uses the Scudo allocator: hardened_malloc is not compiled into bionic,
++        // so the extended VA space it exists to support is never available here
++        return false;
+     }
+ }
+-- 
+2.55.0
+

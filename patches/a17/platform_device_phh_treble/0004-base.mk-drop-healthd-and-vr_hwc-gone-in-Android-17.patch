@@ -1,0 +1,28 @@
+From 9a022022fc312f2aca2560fc036340e03c1b95aa Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:55:12 +0100
+Subject: [PATCH] base.mk: drop healthd and vr_hwc (gone in Android 17)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+---
+ base.mk | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/base.mk b/base.mk
+index 41a3c00..59b166a 100644
+--- a/base.mk
++++ b/base.mk
+@@ -205,9 +205,7 @@ PRODUCT_PACKAGES += \
+     android.hardware.biometrics.fingerprint@2.1-service.oplus.compat \
+ 
+ PRODUCT_PACKAGES += \
+-    vr_hwc \
+     curl \
+-    healthd \
+ 
+ PRODUCT_SYSTEM_DEFAULT_PROPERTIES += \
+     debug.fdsan=warn_once \
+-- 
+2.56.0
+

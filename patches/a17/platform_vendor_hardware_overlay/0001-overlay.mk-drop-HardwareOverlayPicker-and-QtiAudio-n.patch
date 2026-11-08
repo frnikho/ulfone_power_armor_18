@@ -1,0 +1,26 @@
+From 51282e5eb3c2b3fb97417f552e82d68a8db06ba6 Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:55:20 +0100
+Subject: [PATCH] overlay.mk: drop HardwareOverlayPicker and QtiAudio (not
+ defined in any public repo)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+---
+ overlay.mk | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/overlay.mk b/overlay.mk
+index b10ce93..569c55d 100644
+--- a/overlay.mk
++++ b/overlay.mk
+@@ -1,6 +1,4 @@
+ PRODUCT_PACKAGES += \
+-	HardwareOverlayPicker \
+-	QtiAudio \
+ 	TrebleApp \
+ 	treble-overlay-Hisense-HLTE556N \
+ 	treble-overlay-NavBar \
+-- 
+2.56.0
+

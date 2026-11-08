@@ -1,0 +1,16 @@
+{
+  "base_image": "/lab/ulphone/out/vcmp/cur/system_a-fresh.img",
+  "output_image": "/lab/ulphone/out/system_a-v16-spl.img",
+  "edit_files": {
+    "/system/build.prop": [
+      ["ro.build.version.security_patch=2023-11-05", "ro.build.version.security_patch=2024-09-05"],
+      ["ro.keymaster.xxx.security_patch=2023-11-05", "ro.keymaster.xxx.security_patch=2024-09-05"]
+    ],
+    "/system/product/etc/build.prop": [
+      ["ro.build.version.security_patch=2023-11-05", "ro.build.version.security_patch=2024-09-05"]
+    ],
+    "/system/system_ext/etc/build.prop": [
+      ["ro.build.version.security_patch=2023-11-05", "ro.build.version.security_patch=2024-09-05"]
+    ]
+  }
+}

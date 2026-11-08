@@ -1,0 +1,56 @@
+From 1022c4c30ec64c6c0b983062cab0ff691fd8952c Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 03:15:17 +0100
+Subject: [PATCH] development: drop the Linux terminal VM capability check
+
+The virtualization module (android.system.virtualmachine) is removed from
+this build, so the Linux terminal is never available.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+Change-Id: Ic0880dc2b80c755863f8f9ed3833f81d7d9ab863
+---
+ .../LinuxTerminalPreferenceController.java      | 17 ++---------------
+ 1 file changed, 2 insertions(+), 15 deletions(-)
+
+diff --git a/src/com/android/settings/development/linuxterminal/LinuxTerminalPreferenceController.java b/src/com/android/settings/development/linuxterminal/LinuxTerminalPreferenceController.java
+index 93d3a0b..db4fe77 100644
+--- a/src/com/android/settings/development/linuxterminal/LinuxTerminalPreferenceController.java
++++ b/src/com/android/settings/development/linuxterminal/LinuxTerminalPreferenceController.java
+@@ -16,13 +16,9 @@
+ 
+ package com.android.settings.development.linuxterminal;
+ 
+-import static android.system.virtualmachine.VirtualMachineManager.CAPABILITY_NON_PROTECTED_VM;
+-
+ import android.content.Context;
+ import android.content.pm.PackageManager;
+ import android.os.Process;
+-import android.os.storage.StorageManager;
+-import android.system.virtualmachine.VirtualMachineManager;
+ import android.text.TextUtils;
+ import android.util.DataUnit;
+ 
+@@ -57,17 +53,8 @@ public class LinuxTerminalPreferenceController extends DeveloperOptionsPreferenc
+         mTerminalPackageName =
+                 isPackageInstalled(context.getPackageManager(), packageName) ? packageName : null;
+ 
+-        StorageManager storageManager = context.getSystemService(StorageManager.class);
+-        VirtualMachineManager virtualMachineManager =
+-                context.getSystemService(VirtualMachineManager.class);
+-
+-        mIsDeviceCapable =
+-                getTotalMemory() >= MEMORY_MIN_BYTES
+-                        && storageManager != null
+-                        && storageManager.getPrimaryStorageSize() >= STORAGE_MIN_BYTES
+-                        && virtualMachineManager != null
+-                        && ((virtualMachineManager.getCapabilities() & CAPABILITY_NON_PROTECTED_VM)
+-                                != 0);
++        // The virtualization module is removed from this build: no VM, no Linux terminal.
++        mIsDeviceCapable = false;
+     }
+ 
+     // Avoid lazy initialization because this may be called before displayPreference().
+-- 
+2.56.0
+

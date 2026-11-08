@@ -1,0 +1,1024 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Yash Dayani <52958495+YashDayani@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 21:00:00 +0530
+Subject: [PATCH 5/5] Settings: add a network speed indicator toggle to Network & internet
+
+Adds a switch to Network & internet that turns the status bar network
+speed indicator on or off (Settings.System.NETWORK_TRAFFIC_ENABLED).
+When it is on, the current download and upload speed is shown in the
+status bar.
+
+The indicator is added by the "SystemUI: add a network speed indicator
+to the status bar" patch in platform_frameworks_base, which also adds
+the setting; this patch needs it. The other options (mode, units,
+refresh interval, auto-hide) stay available as settings and are not
+part of this screen.
+---
+ res/values-af/network_traffic_strings.xml | 5 +++++
+ res/values-am/network_traffic_strings.xml | 5 +++++
+ res/values-ar/network_traffic_strings.xml | 5 +++++
+ res/values-as/network_traffic_strings.xml | 5 +++++
+ res/values-az/network_traffic_strings.xml | 5 +++++
+ res/values-b+sr+Latn/network_traffic_strings.xml | 5 +++++
+ res/values-be/network_traffic_strings.xml | 5 +++++
+ res/values-bg/network_traffic_strings.xml | 5 +++++
+ res/values-bn/network_traffic_strings.xml | 5 +++++
+ res/values-bs/network_traffic_strings.xml | 5 +++++
+ res/values-ca/network_traffic_strings.xml | 5 +++++
+ res/values-cs/network_traffic_strings.xml | 5 +++++
+ res/values-da/network_traffic_strings.xml | 5 +++++
+ res/values-de/network_traffic_strings.xml | 5 +++++
+ res/values-el/network_traffic_strings.xml | 5 +++++
+ res/values-en-rAU/network_traffic_strings.xml | 5 +++++
+ res/values-en-rCA/network_traffic_strings.xml | 5 +++++
+ res/values-en-rGB/network_traffic_strings.xml | 5 +++++
+ res/values-en-rIN/network_traffic_strings.xml | 5 +++++
+ res/values-es-rUS/network_traffic_strings.xml | 5 +++++
+ res/values-es/network_traffic_strings.xml | 5 +++++
+ res/values-et/network_traffic_strings.xml | 5 +++++
+ res/values-eu/network_traffic_strings.xml | 5 +++++
+ res/values-fa/network_traffic_strings.xml | 5 +++++
+ res/values-fi/network_traffic_strings.xml | 5 +++++
+ res/values-fr-rCA/network_traffic_strings.xml | 5 +++++
+ res/values-fr/network_traffic_strings.xml | 5 +++++
+ res/values-gl/network_traffic_strings.xml | 5 +++++
+ res/values-gu/network_traffic_strings.xml | 5 +++++
+ res/values-hi/network_traffic_strings.xml | 5 +++++
+ res/values-hr/network_traffic_strings.xml | 5 +++++
+ res/values-hu/network_traffic_strings.xml | 5 +++++
+ res/values-hy/network_traffic_strings.xml | 5 +++++
+ res/values-in/network_traffic_strings.xml | 5 +++++
+ res/values-is/network_traffic_strings.xml | 5 +++++
+ res/values-it/network_traffic_strings.xml | 5 +++++
+ res/values-iw/network_traffic_strings.xml | 5 +++++
+ res/values-ja/network_traffic_strings.xml | 5 +++++
+ res/values-ka/network_traffic_strings.xml | 5 +++++
+ res/values-kk/network_traffic_strings.xml | 5 +++++
+ res/values-km/network_traffic_strings.xml | 5 +++++
+ res/values-kn/network_traffic_strings.xml | 5 +++++
+ res/values-ko/network_traffic_strings.xml | 5 +++++
+ res/values-ky/network_traffic_strings.xml | 5 +++++
+ res/values-lo/network_traffic_strings.xml | 5 +++++
+ res/values-lt/network_traffic_strings.xml | 5 +++++
+ res/values-lv/network_traffic_strings.xml | 5 +++++
+ res/values-mk/network_traffic_strings.xml | 5 +++++
+ res/values-ml/network_traffic_strings.xml | 5 +++++
+ res/values-mn/network_traffic_strings.xml | 5 +++++
+ res/values-mr/network_traffic_strings.xml | 5 +++++
+ res/values-ms/network_traffic_strings.xml | 5 +++++
+ res/values-my/network_traffic_strings.xml | 5 +++++
+ res/values-nb/network_traffic_strings.xml | 5 +++++
+ res/values-ne/network_traffic_strings.xml | 5 +++++
+ res/values-nl/network_traffic_strings.xml | 5 +++++
+ res/values-or/network_traffic_strings.xml | 5 +++++
+ res/values-pa/network_traffic_strings.xml | 5 +++++
+ res/values-pl/network_traffic_strings.xml | 5 +++++
+ res/values-pt-rBR/network_traffic_strings.xml | 5 +++++
+ res/values-pt-rPT/network_traffic_strings.xml | 5 +++++
+ res/values-pt/network_traffic_strings.xml | 5 +++++
+ res/values-ro/network_traffic_strings.xml | 5 +++++
+ res/values-ru/network_traffic_strings.xml | 5 +++++
+ res/values-si/network_traffic_strings.xml | 5 +++++
+ res/values-sk/network_traffic_strings.xml | 5 +++++
+ res/values-sl/network_traffic_strings.xml | 5 +++++
+ res/values-sq/network_traffic_strings.xml | 5 +++++
+ res/values-sr/network_traffic_strings.xml | 5 +++++
+ res/values-sv/network_traffic_strings.xml | 5 +++++
+ res/values-sw/network_traffic_strings.xml | 5 +++++
+ res/values-ta/network_traffic_strings.xml | 5 +++++
+ res/values-te/network_traffic_strings.xml | 5 +++++
+ res/values-th/network_traffic_strings.xml | 5 +++++
+ res/values-tl/network_traffic_strings.xml | 5 +++++
+ res/values-tr/network_traffic_strings.xml | 5 +++++
+ res/values-uk/network_traffic_strings.xml | 5 +++++
+ res/values-ur/network_traffic_strings.xml | 5 +++++
+ res/values-uz/network_traffic_strings.xml | 5 +++++
+ res/values-vi/network_traffic_strings.xml | 5 +++++
+ res/values-zh-rCN/network_traffic_strings.xml | 5 +++++
+ res/values-zh-rHK/network_traffic_strings.xml | 5 +++++
+ res/values-zh-rTW/network_traffic_strings.xml | 5 +++++
+ res/values-zu/network_traffic_strings.xml | 5 +++++
+ res/values/network_traffic_strings.xml | 5 +++++
+ res/xml/network_provider_internet.xml | 7 +++++++
+ src/com/android/settings/network/NetworkTrafficPreferenceController.kt | 45 ++++++++++++++++++++
+ 87 files changed, 477 insertions(+), 0 deletions(-)
+
+diff --git a/res/values-af/network_traffic_strings.xml b/res/values-af/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-af/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Netwerkspoedaanwyser</string>
++    <string name="network_traffic_summary">Wys die huidige aflaai- en oplaaispoed in die statusbalk</string>
++</resources>
+diff --git a/res/values-am/network_traffic_strings.xml b/res/values-am/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-am/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">የአውታረ መረብ ፍጥነት አመልካች</string>
++    <string name="network_traffic_summary">የአሁኑን የማውረድ እና የመስቀል ፍጥነት በሁኔታ አሞሌ ውስጥ አሳይ</string>
++</resources>
+diff --git a/res/values-ar/network_traffic_strings.xml b/res/values-ar/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ar/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">مؤشر سرعة الشبكة</string>
++    <string name="network_traffic_summary">عرض سرعة التنزيل والتحميل الحالية في شريط الحالة</string>
++</resources>
+diff --git a/res/values-as/network_traffic_strings.xml b/res/values-as/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-as/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">নেটৱৰ্কৰ গতিৰ সূচক</string>
++    <string name="network_traffic_summary">স্থিতি দণ্ডত বৰ্তমানৰ ডাউনল’ড আৰু আপল’ডৰ গতি দেখুৱাওক</string>
++</resources>
+diff --git a/res/values-az/network_traffic_strings.xml b/res/values-az/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-az/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Şəbəkə sürəti göstəricisi</string>
++    <string name="network_traffic_summary">Status panelində cari endirmə və yükləmə sürətini göstərin</string>
++</resources>
+diff --git a/res/values-b+sr+Latn/network_traffic_strings.xml b/res/values-b+sr+Latn/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-b+sr+Latn/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikator brzine mreže</string>
++    <string name="network_traffic_summary">Prikazuje trenutnu brzinu preuzimanja i otpremanja na statusnoj traci</string>
++</resources>
+diff --git a/res/values-be/network_traffic_strings.xml b/res/values-be/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-be/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Індыкатар хуткасці сеткі</string>
++    <string name="network_traffic_summary">Паказваць бягучую хуткасць спампоўвання і запампоўвання ў радку стану</string>
++</resources>
+diff --git a/res/values-bg/network_traffic_strings.xml b/res/values-bg/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-bg/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Индикатор за скоростта на мрежата</string>
++    <string name="network_traffic_summary">Показване на текущата скорост на изтегляне и качване в лентата на състоянието</string>
++</resources>
+diff --git a/res/values-bn/network_traffic_strings.xml b/res/values-bn/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-bn/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">নেটওয়ার্ক স্পিড ইন্ডিকেটর</string>
++    <string name="network_traffic_summary">স্ট্যাটাস বারে বর্তমান ডাউনলোড ও আপলোড স্পিড দেখান</string>
++</resources>
+diff --git a/res/values-bs/network_traffic_strings.xml b/res/values-bs/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-bs/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikator brzine mreže</string>
++    <string name="network_traffic_summary">Prikaz trenutne brzine preuzimanja i otpremanja na statusnoj traci</string>
++</resources>
+diff --git a/res/values-ca/network_traffic_strings.xml b/res/values-ca/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ca/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicador de velocitat de la xarxa</string>
++    <string name="network_traffic_summary">Mostra la velocitat de baixada i de pujada actual a la barra d\'estat</string>
++</resources>
+diff --git a/res/values-cs/network_traffic_strings.xml b/res/values-cs/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-cs/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikátor rychlosti sítě</string>
++    <string name="network_traffic_summary">Zobrazovat aktuální rychlost stahování a nahrávání na stavovém řádku</string>
++</resources>
+diff --git a/res/values-da/network_traffic_strings.xml b/res/values-da/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-da/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikator for netværkshastighed</string>
++    <string name="network_traffic_summary">Vis den aktuelle download- og uploadhastighed på statuslinjen</string>
++</resources>
+diff --git a/res/values-de/network_traffic_strings.xml b/res/values-de/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-de/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Anzeige der Netzwerkgeschwindigkeit</string>
++    <string name="network_traffic_summary">Aktuelle Download- und Uploadgeschwindigkeit in der Statusleiste anzeigen</string>
++</resources>
+diff --git a/res/values-el/network_traffic_strings.xml b/res/values-el/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-el/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Ένδειξη ταχύτητας δικτύου</string>
++    <string name="network_traffic_summary">Εμφάνιση της τρέχουσας ταχύτητας λήψης και αποστολής στη γραμμή κατάστασης</string>
++</resources>
+diff --git a/res/values-en-rAU/network_traffic_strings.xml b/res/values-en-rAU/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-en-rAU/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Network speed indicator</string>
++    <string name="network_traffic_summary">Show the current download and upload speed in the status bar</string>
++</resources>
+diff --git a/res/values-en-rCA/network_traffic_strings.xml b/res/values-en-rCA/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-en-rCA/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Network speed indicator</string>
++    <string name="network_traffic_summary">Show the current download and upload speed in the status bar</string>
++</resources>
+diff --git a/res/values-en-rGB/network_traffic_strings.xml b/res/values-en-rGB/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-en-rGB/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Network speed indicator</string>
++    <string name="network_traffic_summary">Show the current download and upload speed in the status bar</string>
++</resources>
+diff --git a/res/values-en-rIN/network_traffic_strings.xml b/res/values-en-rIN/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-en-rIN/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Network speed indicator</string>
++    <string name="network_traffic_summary">Show the current download and upload speed in the status bar</string>
++</resources>
+diff --git a/res/values-es-rUS/network_traffic_strings.xml b/res/values-es-rUS/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-es-rUS/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicador de velocidad de red</string>
++    <string name="network_traffic_summary">Muestra la velocidad actual de descarga y carga en la barra de estado</string>
++</resources>
+diff --git a/res/values-es/network_traffic_strings.xml b/res/values-es/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-es/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicador de velocidad de red</string>
++    <string name="network_traffic_summary">Muestra la velocidad de descarga y subida actual en la barra de estado</string>
++</resources>
+diff --git a/res/values-et/network_traffic_strings.xml b/res/values-et/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-et/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Võrgukiiruse näidik</string>
++    <string name="network_traffic_summary">Kuva olekuribal praegune allalaadimis- ja üleslaadimiskiirus</string>
++</resources>
+diff --git a/res/values-eu/network_traffic_strings.xml b/res/values-eu/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-eu/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Sarearen abiadura-adierazlea</string>
++    <string name="network_traffic_summary">Erakutsi uneko deskarga- eta karga-abiadura egoera-barran</string>
++</resources>
+diff --git a/res/values-fa/network_traffic_strings.xml b/res/values-fa/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-fa/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">نشانگر سرعت شبکه</string>
++    <string name="network_traffic_summary">نمایش سرعت فعلی بارگیری و بارگذاری در نوار وضعیت</string>
++</resources>
+diff --git a/res/values-fi/network_traffic_strings.xml b/res/values-fi/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-fi/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Verkon nopeuden ilmaisin</string>
++    <string name="network_traffic_summary">Näytä nykyinen lataus- ja lähetysnopeus tilapalkissa</string>
++</resources>
+diff --git a/res/values-fr-rCA/network_traffic_strings.xml b/res/values-fr-rCA/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-fr-rCA/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicateur de vitesse du réseau</string>
++    <string name="network_traffic_summary">Afficher la vitesse actuelle de téléchargement et de téléversement dans la barre d\'état</string>
++</resources>
+diff --git a/res/values-fr/network_traffic_strings.xml b/res/values-fr/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-fr/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicateur de débit réseau</string>
++    <string name="network_traffic_summary">Afficher le débit actuel de téléchargement et d\'envoi dans la barre d\'état</string>
++</resources>
+diff --git a/res/values-gl/network_traffic_strings.xml b/res/values-gl/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-gl/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicador de velocidade da rede</string>
++    <string name="network_traffic_summary">Mostra a velocidade actual de descarga e carga na barra de estado</string>
++</resources>
+diff --git a/res/values-gu/network_traffic_strings.xml b/res/values-gu/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-gu/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">નેટવર્ક સ્પીડ સૂચક</string>
++    <string name="network_traffic_summary">સ્ટેટસ બારમાં વર્તમાન ડાઉનલોડ અને અપલોડ સ્પીડ બતાવો</string>
++</resources>
+diff --git a/res/values-hi/network_traffic_strings.xml b/res/values-hi/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-hi/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">नेटवर्क स्पीड इंडिकेटर</string>
++    <string name="network_traffic_summary">स्टेटस बार में मौजूदा डाउनलोड और अपलोड स्पीड दिखाएं</string>
++</resources>
+diff --git a/res/values-hr/network_traffic_strings.xml b/res/values-hr/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-hr/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikator brzine mreže</string>
++    <string name="network_traffic_summary">Prikaži trenutačnu brzinu preuzimanja i prijenosa na traci statusa</string>
++</resources>
+diff --git a/res/values-hu/network_traffic_strings.xml b/res/values-hu/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-hu/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Hálózati sebesség kijelzése</string>
++    <string name="network_traffic_summary">Az aktuális letöltési és feltöltési sebesség megjelenítése az állapotsoron</string>
++</resources>
+diff --git a/res/values-hy/network_traffic_strings.xml b/res/values-hy/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-hy/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Ցանցի արագության ցուցիչ</string>
++    <string name="network_traffic_summary">Ցույց տալ ներբեռնման և վերբեռնման ընթացիկ արագությունը կարգավիճակի գոտում</string>
++</resources>
+diff --git a/res/values-in/network_traffic_strings.xml b/res/values-in/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-in/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikator kecepatan jaringan</string>
++    <string name="network_traffic_summary">Tampilkan kecepatan download dan upload saat ini di status bar</string>
++</resources>
+diff --git a/res/values-is/network_traffic_strings.xml b/res/values-is/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-is/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Vísir fyrir nethraða</string>
++    <string name="network_traffic_summary">Sýna núverandi niðurhals- og upphleðsluhraða á stöðustikunni</string>
++</resources>
+diff --git a/res/values-it/network_traffic_strings.xml b/res/values-it/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-it/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicatore velocità di rete</string>
++    <string name="network_traffic_summary">Mostra la velocità attuale di download e upload nella barra di stato</string>
++</resources>
+diff --git a/res/values-iw/network_traffic_strings.xml b/res/values-iw/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-iw/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">מחוון מהירות רשת</string>
++    <string name="network_traffic_summary">הצגת מהירות ההורדה וההעלאה הנוכחית בשורת הסטטוס</string>
++</resources>
+diff --git a/res/values-ja/network_traffic_strings.xml b/res/values-ja/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ja/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ネットワーク速度インジケーター</string>
++    <string name="network_traffic_summary">現在のダウンロード速度とアップロード速度をステータスバーに表示します</string>
++</resources>
+diff --git a/res/values-ka/network_traffic_strings.xml b/res/values-ka/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ka/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ქსელის სიჩქარის ინდიკატორი</string>
++    <string name="network_traffic_summary">სტატუსის ზოლში ჩამოტვირთვისა და ატვირთვის მიმდინარე სიჩქარის ჩვენება</string>
++</resources>
+diff --git a/res/values-kk/network_traffic_strings.xml b/res/values-kk/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-kk/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Желі жылдамдығының индикаторы</string>
++    <string name="network_traffic_summary">Күй жолағында ағымдағы жүктеп алу және жүктеп салу жылдамдығын көрсету</string>
++</resources>
+diff --git a/res/values-km/network_traffic_strings.xml b/res/values-km/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-km/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">សូចនាករល្បឿនបណ្ដាញ</string>
++    <string name="network_traffic_summary">បង្ហាញល្បឿនទាញយក និងបង្ហោះបច្ចុប្បន្ននៅក្នុងរបារស្ថានភាព</string>
++</resources>
+diff --git a/res/values-kn/network_traffic_strings.xml b/res/values-kn/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-kn/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ನೆಟ್‌ವರ್ಕ್ ವೇಗ ಸೂಚಕ</string>
++    <string name="network_traffic_summary">ಸ್ಥಿತಿ ಪಟ್ಟಿಯಲ್ಲಿ ಪ್ರಸ್ತುತ ಡೌನ್‌ಲೋಡ್ ಮತ್ತು ಅಪ್‌ಲೋಡ್ ವೇಗವನ್ನು ತೋರಿಸಿ</string>
++</resources>
+diff --git a/res/values-ko/network_traffic_strings.xml b/res/values-ko/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ko/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">네트워크 속도 표시기</string>
++    <string name="network_traffic_summary">상태 표시줄에 현재 다운로드 및 업로드 속도 표시</string>
++</resources>
+diff --git a/res/values-ky/network_traffic_strings.xml b/res/values-ky/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ky/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Тармактын ылдамдык көрсөткүчү</string>
++    <string name="network_traffic_summary">Абал тилкесинде учурдагы жүктөп алуу жана жүктөп берүү ылдамдыгын көрсөтүү</string>
++</resources>
+diff --git a/res/values-lo/network_traffic_strings.xml b/res/values-lo/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-lo/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ຕົວບອກຄວາມໄວເຄືອຂ່າຍ</string>
++    <string name="network_traffic_summary">ສະແດງຄວາມໄວການດາວໂຫຼດ ແລະ ອັບໂຫຼດປັດຈຸບັນໃນແຖບສະຖານະ</string>
++</resources>
+diff --git a/res/values-lt/network_traffic_strings.xml b/res/values-lt/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-lt/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Tinklo spartos indikatorius</string>
++    <string name="network_traffic_summary">Rodyti dabartinę atsisiuntimo ir įkėlimo spartą būsenos juostoje</string>
++</resources>
+diff --git a/res/values-lv/network_traffic_strings.xml b/res/values-lv/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-lv/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Tīkla ātruma indikators</string>
++    <string name="network_traffic_summary">Rādīt pašreizējo lejupielādes un augšupielādes ātrumu statusa joslā</string>
++</resources>
+diff --git a/res/values-mk/network_traffic_strings.xml b/res/values-mk/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-mk/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Индикатор за брзина на мрежата</string>
++    <string name="network_traffic_summary">Прикажувај ја тековната брзина на преземање и прикачување во лентата за статус</string>
++</resources>
+diff --git a/res/values-ml/network_traffic_strings.xml b/res/values-ml/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ml/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">നെറ്റ്‌വർക്ക് വേഗത സൂചകം</string>
++    <string name="network_traffic_summary">സ്റ്റാറ്റസ് ബാറിൽ നിലവിലെ ഡൗൺലോഡ്, അപ്‌ലോഡ് വേഗത കാണിക്കുക</string>
++</resources>
+diff --git a/res/values-mn/network_traffic_strings.xml b/res/values-mn/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-mn/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Сүлжээний хурдны заагч</string>
++    <string name="network_traffic_summary">Төлөвийн мөрөнд одоогийн татах болон байршуулах хурдыг харуулах</string>
++</resources>
+diff --git a/res/values-mr/network_traffic_strings.xml b/res/values-mr/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-mr/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">नेटवर्क स्पीड इंडिकेटर</string>
++    <string name="network_traffic_summary">स्टेटस बारमध्ये सध्याचा डाउनलोड आणि अपलोड स्पीड दाखवा</string>
++</resources>
+diff --git a/res/values-ms/network_traffic_strings.xml b/res/values-ms/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ms/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Penunjuk kelajuan rangkaian</string>
++    <string name="network_traffic_summary">Tunjukkan kelajuan muat turun dan muat naik semasa dalam bar status</string>
++</resources>
+diff --git a/res/values-my/network_traffic_strings.xml b/res/values-my/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-my/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ကွန်ရက်အမြန်နှုန်း ပြကိရိယာ</string>
++    <string name="network_traffic_summary">လက်ရှိ ဒေါင်းလုဒ်နှင့် အပ်လုဒ် အမြန်နှုန်းကို အခြေအနေဘားတွင် ပြပါ</string>
++</resources>
+diff --git a/res/values-nb/network_traffic_strings.xml b/res/values-nb/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-nb/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikator for nettverkshastighet</string>
++    <string name="network_traffic_summary">Vis gjeldende nedlastings- og opplastingshastighet i statusfeltet</string>
++</resources>
+diff --git a/res/values-ne/network_traffic_strings.xml b/res/values-ne/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ne/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">नेटवर्क स्पिड सूचक</string>
++    <string name="network_traffic_summary">स्टाटस बारमा हालको डाउनलोड र अपलोड स्पिड देखाउनुहोस्</string>
++</resources>
+diff --git a/res/values-nl/network_traffic_strings.xml b/res/values-nl/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-nl/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicator voor netwerksnelheid</string>
++    <string name="network_traffic_summary">Toon de huidige download- en uploadsnelheid in de statusbalk</string>
++</resources>
+diff --git a/res/values-or/network_traffic_strings.xml b/res/values-or/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-or/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ନେଟୱାର୍କ ସ୍ପିଡ ସୂଚକ</string>
++    <string name="network_traffic_summary">ଷ୍ଟାଟସ ବାରରେ ବର୍ତ୍ତମାନର ଡାଉନଲୋଡ ଏବଂ ଅପଲୋଡ ସ୍ପିଡ ଦେଖାନ୍ତୁ</string>
++</resources>
+diff --git a/res/values-pa/network_traffic_strings.xml b/res/values-pa/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-pa/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ਨੈੱਟਵਰਕ ਸਪੀਡ ਸੂਚਕ</string>
++    <string name="network_traffic_summary">ਸਥਿਤੀ ਪੱਟੀ ਵਿੱਚ ਮੌਜੂਦਾ ਡਾਊਨਲੋਡ ਅਤੇ ਅੱਪਲੋਡ ਸਪੀਡ ਦਿਖਾਓ</string>
++</resources>
+diff --git a/res/values-pl/network_traffic_strings.xml b/res/values-pl/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-pl/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Wskaźnik szybkości sieci</string>
++    <string name="network_traffic_summary">Pokazuj bieżącą szybkość pobierania i wysyłania na pasku stanu</string>
++</resources>
+diff --git a/res/values-pt-rBR/network_traffic_strings.xml b/res/values-pt-rBR/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-pt-rBR/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicador de velocidade da rede</string>
++    <string name="network_traffic_summary">Mostrar a velocidade atual de download e upload na barra de status</string>
++</resources>
+diff --git a/res/values-pt-rPT/network_traffic_strings.xml b/res/values-pt-rPT/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-pt-rPT/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicador de velocidade da rede</string>
++    <string name="network_traffic_summary">Mostrar a velocidade atual de transferência e carregamento na barra de estado</string>
++</resources>
+diff --git a/res/values-pt/network_traffic_strings.xml b/res/values-pt/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-pt/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicador de velocidade da rede</string>
++    <string name="network_traffic_summary">Mostrar a velocidade atual de download e upload na barra de status</string>
++</resources>
+diff --git a/res/values-ro/network_traffic_strings.xml b/res/values-ro/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ro/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicator de viteză a rețelei</string>
++    <string name="network_traffic_summary">Afișează viteza actuală de descărcare și încărcare în bara de stare</string>
++</resources>
+diff --git a/res/values-ru/network_traffic_strings.xml b/res/values-ru/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ru/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Индикатор скорости сети</string>
++    <string name="network_traffic_summary">Показывать текущую скорость скачивания и отправки в строке состояния</string>
++</resources>
+diff --git a/res/values-si/network_traffic_strings.xml b/res/values-si/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-si/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ජාල වේග දර්ශකය</string>
++    <string name="network_traffic_summary">තත්ත්ව තීරුවේ වත්මන් බාගැනීම් සහ උඩුගත කිරීම් වේගය පෙන්වන්න</string>
++</resources>
+diff --git a/res/values-sk/network_traffic_strings.xml b/res/values-sk/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-sk/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikátor rýchlosti siete</string>
++    <string name="network_traffic_summary">Zobrazovať aktuálnu rýchlosť sťahovania a odovzdávania v stavovom riadku</string>
++</resources>
+diff --git a/res/values-sl/network_traffic_strings.xml b/res/values-sl/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-sl/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikator hitrosti omrežja</string>
++    <string name="network_traffic_summary">Prikaži trenutno hitrost prenosa in nalaganja v vrstici stanja</string>
++</resources>
+diff --git a/res/values-sq/network_traffic_strings.xml b/res/values-sq/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-sq/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Treguesi i shpejtësisë së rrjetit</string>
++    <string name="network_traffic_summary">Shfaq shpejtësinë aktuale të shkarkimit dhe ngarkimit në shiritin e statusit</string>
++</resources>
+diff --git a/res/values-sr/network_traffic_strings.xml b/res/values-sr/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-sr/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Индикатор брзине мреже</string>
++    <string name="network_traffic_summary">Приказује тренутну брзину преузимања и отпремања на статусној траци</string>
++</resources>
+diff --git a/res/values-sv/network_traffic_strings.xml b/res/values-sv/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-sv/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indikator för nätverkshastighet</string>
++    <string name="network_traffic_summary">Visa aktuell nedladdnings- och uppladdningshastighet i statusfältet</string>
++</resources>
+diff --git a/res/values-sw/network_traffic_strings.xml b/res/values-sw/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-sw/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Kiashiria cha kasi ya mtandao</string>
++    <string name="network_traffic_summary">Onyesha kasi ya sasa ya kupakua na kupakia kwenye sehemu ya arifa</string>
++</resources>
+diff --git a/res/values-ta/network_traffic_strings.xml b/res/values-ta/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ta/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">நெட்வொர்க் வேக இண்டிகேட்டர்</string>
++    <string name="network_traffic_summary">நிலைப் பட்டியில் தற்போதைய பதிவிறக்க, பதிவேற்ற வேகத்தைக் காட்டும்</string>
++</resources>
+diff --git a/res/values-te/network_traffic_strings.xml b/res/values-te/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-te/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">నెట్‌వర్క్ స్పీడ్ ఇండికేటర్</string>
++    <string name="network_traffic_summary">స్టేటస్ బార్‌లో ప్రస్తుత డౌన్‌లోడ్, అప్‌లోడ్ స్పీడ్‌ను చూపుతుంది</string>
++</resources>
+diff --git a/res/values-th/network_traffic_strings.xml b/res/values-th/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-th/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">ตัวบ่งชี้ความเร็วเครือข่าย</string>
++    <string name="network_traffic_summary">แสดงความเร็วในการดาวน์โหลดและอัปโหลดปัจจุบันในแถบสถานะ</string>
++</resources>
+diff --git a/res/values-tl/network_traffic_strings.xml b/res/values-tl/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-tl/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Indicator ng bilis ng network</string>
++    <string name="network_traffic_summary">Ipakita ang kasalukuyang bilis ng pag-download at pag-upload sa status bar</string>
++</resources>
+diff --git a/res/values-tr/network_traffic_strings.xml b/res/values-tr/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-tr/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Ağ hızı göstergesi</string>
++    <string name="network_traffic_summary">Durum çubuğunda anlık indirme ve yükleme hızını gösterir</string>
++</resources>
+diff --git a/res/values-uk/network_traffic_strings.xml b/res/values-uk/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-uk/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Індикатор швидкості мережі</string>
++    <string name="network_traffic_summary">Показувати поточну швидкість завантаження й вивантаження в рядку стану</string>
++</resources>
+diff --git a/res/values-ur/network_traffic_strings.xml b/res/values-ur/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-ur/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">نیٹ ورک اسپیڈ انڈیکیٹر</string>
++    <string name="network_traffic_summary">اسٹیٹس بار میں موجودہ ڈاؤن لوڈ اور اپ لوڈ اسپیڈ دکھائیں</string>
++</resources>
+diff --git a/res/values-uz/network_traffic_strings.xml b/res/values-uz/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-uz/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Tarmoq tezligi indikatori</string>
++    <string name="network_traffic_summary">Holat qatorida joriy yuklab olish va yuklash tezligini koʻrsatish</string>
++</resources>
+diff --git a/res/values-vi/network_traffic_strings.xml b/res/values-vi/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-vi/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Chỉ báo tốc độ mạng</string>
++    <string name="network_traffic_summary">Hiển thị tốc độ tải xuống và tải lên hiện tại trên thanh trạng thái</string>
++</resources>
+diff --git a/res/values-zh-rCN/network_traffic_strings.xml b/res/values-zh-rCN/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-zh-rCN/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">网速指示器</string>
++    <string name="network_traffic_summary">在状态栏中显示当前的下载和上传速度</string>
++</resources>
+diff --git a/res/values-zh-rHK/network_traffic_strings.xml b/res/values-zh-rHK/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-zh-rHK/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">網絡速度指示器</string>
++    <string name="network_traffic_summary">在狀態列中顯示目前的下載和上傳速度</string>
++</resources>
+diff --git a/res/values-zh-rTW/network_traffic_strings.xml b/res/values-zh-rTW/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-zh-rTW/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">網路速度指標</string>
++    <string name="network_traffic_summary">在狀態列中顯示目前的下載和上傳速度</string>
++</resources>
+diff --git a/res/values-zu/network_traffic_strings.xml b/res/values-zu/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values-zu/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Inkomba yesivinini senethiwekhi</string>
++    <string name="network_traffic_summary">Bonisa isivinini samanje sokudawuniloda nokulayisha kubha yesimo</string>
++</resources>
+diff --git a/res/values/network_traffic_strings.xml b/res/values/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/res/values/network_traffic_strings.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="network_traffic_title">Network speed indicator</string>
++    <string name="network_traffic_summary">Show the current download and upload speed in the status bar</string>
++</resources>
+diff --git a/res/xml/network_provider_internet.xml b/res/xml/network_provider_internet.xml
+--- a/res/xml/network_provider_internet.xml
++++ b/res/xml/network_provider_internet.xml
+@@ -103,6 +103,13 @@
+         settings:userRestriction="no_config_vpn"
+         settings:useAdminDisabledSummary="true" />
+ 
++    <SwitchPreferenceCompat
++        android:key="network_traffic_enabled"
++        android:title="@string/network_traffic_title"
++        android:summary="@string/network_traffic_summary"
++        android:order="17"
++        settings:controller="com.android.settings.network.NetworkTrafficPreferenceController" />
++
+     <com.android.settings.network.PrivateDnsModeDialogPreference
+         android:key="private_dns_settings"
+         android:title="@string/select_private_dns_configuration_title"
+diff --git a/src/com/android/settings/network/NetworkTrafficPreferenceController.kt b/src/com/android/settings/network/NetworkTrafficPreferenceController.kt
+new file mode 100644
+--- /dev/null
++++ b/src/com/android/settings/network/NetworkTrafficPreferenceController.kt
+@@ -0,0 +1,45 @@
++package com.android.settings.network
++
++import android.content.Context
++import android.provider.Settings
++import androidx.annotation.VisibleForTesting
++import com.android.settings.R
++import com.android.settings.core.TogglePreferenceController
++
++/**
++ * Preference controller that turns the network speed indicator in the status bar on or off. The
++ * indicator itself lives in SystemUI and follows [Settings.System.NETWORK_TRAFFIC_ENABLED].
++ */
++class NetworkTrafficPreferenceController(context: Context, key: String) :
++    TogglePreferenceController(context, key) {
++
++    override fun getAvailabilityStatus(): Int {
++        return AVAILABLE
++    }
++
++    override fun isChecked(): Boolean {
++        return Settings.System.getInt(
++            mContext.contentResolver,
++            Settings.System.NETWORK_TRAFFIC_ENABLED,
++            SETTING_VALUE_OFF,
++        ) == SETTING_VALUE_ON
++    }
++
++    override fun setChecked(isChecked: Boolean): Boolean {
++        return Settings.System.putInt(
++            mContext.contentResolver,
++            Settings.System.NETWORK_TRAFFIC_ENABLED,
++            if (isChecked) SETTING_VALUE_ON else SETTING_VALUE_OFF,
++        )
++    }
++
++    override fun getSliceHighlightMenuRes(): Int {
++        return R.string.menu_key_network
++    }
++
++    companion object {
++        @VisibleForTesting const val SETTING_VALUE_OFF = 0
++
++        @VisibleForTesting const val SETTING_VALUE_ON = 1
++    }
++}
+-- 
+2.50.1

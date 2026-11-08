@@ -1,0 +1,1248 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Yash Dayani <52958495+YashDayani@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 20:30:00 +0530
+Subject: [PATCH 18/21] SystemUI: add a network speed indicator to the status bar
+
+Shows the current download and upload speed as a small two line
+indicator in the status bar, for the networks that have working
+internet (Wi-Fi and mobile data). It is off by default and is turned on
+from Settings > Network & internet (companion
+platform_packages_apps_Settings patch) or with:
+
+  settings put system network_traffic_enabled 1
+
+Further settings: network_traffic_mode (0 up and down, 1 up only,
+2 down only), network_traffic_units (0 bits, 1 bytes),
+network_traffic_refresh_interval (seconds), network_traffic_autohide,
+network_traffic_autohide_threshold (kB/s) and network_traffic_hidearrow.
+
+The indicator view is taken from the EvoX and crDroid SystemUI
+(NetworkTraffic, Apache-2.0, crDroid Android Project) and wired into
+the status bar icon pipeline of this tree:
+
+- It reads the network_traffic_* settings of the current user from
+  Settings.System with a ContentObserver (and re-reads them on user
+  switch), because TunerService in this tree only reads Settings.Secure
+  and has no support for the "system:" prefix EvoX uses.
+- It listens to the network only while it is attached and enabled.
+- The status bar tints it through DarkIconDispatcher (registered by
+  DarkIconManager); the quick settings header and the keyguard tint it
+  through setStaticDrawableColor() of TintedIconManager.
+- PhoneStatusBarPolicy adds the slot once at start up and the view
+  shows or hides itself from the settings, so it needs no new
+  constructor dependencies.
+
+- The slot only counts as visible while there is a speed to show, and
+  the view keeps its width when StatusIconContainer hides it, so the
+  container never lays out the neighbouring icons from a stale width.
+
+Known limitation: it is not shown when the Compose system icons flags
+are enabled.
+---
+ core/java/android/provider/Settings.java | 49 ++++++++++++++++++++
+ core/res/res/values/config.xml | 2 ++
+ core/res/res/values/symbols.xml | 1 +
+ packages/SettingsProvider/src/android/provider/settings/backup/SystemSettings.java | 7 +++++++
+ packages/SettingsProvider/src/android/provider/settings/validators/SystemSettingsValidators.java | 8 ++++++++
+ packages/SystemUI/res/drawable/stat_sys_network_traffic.xml | 33 ++++++++++++++++++++
+ packages/SystemUI/res/drawable/stat_sys_network_traffic_down.xml | 33 ++++++++++++++++++++
+ packages/SystemUI/res/drawable/stat_sys_network_traffic_up.xml | 33 ++++++++++++++++++++
+ packages/SystemUI/res/drawable/stat_sys_network_traffic_updown.xml | 33 ++++++++++++++++++++
+ packages/SystemUI/res/values/network_traffic_strings.xml | 25 ++++++++++++++++++++
+ packages/SystemUI/src/com/android/systemui/statusbar/NetworkTraffic.java | 698 ++++++++++++++++++++
+ packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarPolicy.java | 6 ++++++
+ packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconHolder.kt | 20 +++++++++++++++++---
+ packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/IconManager.java | 10 ++++++++++
+ packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconController.java | 6 ++++++
+ packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconControllerImpl.java | 10 ++++++++++
+ 16 files changed, 971 insertions(+), 3 deletions(-)
+
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -5602,6 +5602,55 @@
+          */
+         @Readable
+         public static final String MIN_REFRESH_RATE = "min_refresh_rate";
++
++        /**
++         * Whether the network speed indicator is shown in the status bar.
++         * 0 = Disabled, 1 = Enabled
++         * @hide
++         */
++        public static final String NETWORK_TRAFFIC_ENABLED = "network_traffic_enabled";
++
++        /**
++         * Network speed indicator mode.
++         * 0 = Show both upload and download speed, 1 = Show upload speed only,
++         * 2 = Show download speed only
++         * @hide
++         */
++        public static final String NETWORK_TRAFFIC_MODE = "network_traffic_mode";
++
++        /**
++         * Whether to hide the network speed indicator while there is little traffic.
++         * 0 = Always show, 1 = Hide below the threshold
++         * @hide
++         */
++        public static final String NETWORK_TRAFFIC_AUTOHIDE = "network_traffic_autohide";
++
++        /**
++         * Traffic threshold in kB/s below which the network speed indicator is hidden when
++         * {@link #NETWORK_TRAFFIC_AUTOHIDE} is enabled.
++         * @hide
++         */
++        public static final String NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD =
++                "network_traffic_autohide_threshold";
++
++        /**
++         * Unit of the network speed indicator. 0 = bits per second, 1 = bytes per second
++         * @hide
++         */
++        public static final String NETWORK_TRAFFIC_UNITS = "network_traffic_units";
++
++        /**
++         * Refresh interval of the network speed indicator in seconds.
++         * @hide
++         */
++        public static final String NETWORK_TRAFFIC_REFRESH_INTERVAL =
++                "network_traffic_refresh_interval";
++
++        /**
++         * Whether to hide the arrows next to the network speed. 0 = Show, 1 = Hide
++         * @hide
++         */
++        public static final String NETWORK_TRAFFIC_HIDEARROW = "network_traffic_hidearrow";
+ 
+         /**
+          * The user selected peak refresh rate in frames per second. If infinite, the user wants
+diff --git a/core/res/res/values/config.xml b/core/res/res/values/config.xml
+--- a/core/res/res/values/config.xml
++++ b/core/res/res/values/config.xml
+@@ -58,6 +58,7 @@
+         <item><xliff:g id="id">@string/status_bar_cast</xliff:g></item>
+         <item><xliff:g id="id">@string/status_bar_ethernet</xliff:g></item>
+         <item><xliff:g id="id">@string/status_bar_oem_satellite</xliff:g></item>
++        <item><xliff:g id="id">@string/status_bar_network_traffic</xliff:g></item>
+         <item><xliff:g id="id">@string/status_bar_hotspot</xliff:g></item>
+         <item><xliff:g id="id">@string/status_bar_stacked_mobile</xliff:g></item>
+         <item><xliff:g id="id">@string/status_bar_mobile</xliff:g></item>
+@@ -106,6 +107,7 @@
+     <string translatable="false" name="status_bar_sensors_off">sensors_off</string>
+     <string translatable="false" name="status_bar_screen_record">screen_record</string>
+     <string translatable="false" name="status_bar_oem_satellite">satellite</string>
++    <string translatable="false" name="status_bar_network_traffic">network_traffic</string>
+ 
+     <!-- Flag indicating whether the surface flinger has limited
+          alpha compositing functionality in hardware.  If set, the window
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -3445,6 +3445,7 @@
+   <java-symbol type="string" name="status_bar_sensors_off" />
+   <java-symbol type="string" name="status_bar_screen_record" />
+   <java-symbol type="string" name="status_bar_oem_satellite" />
++  <java-symbol type="string" name="status_bar_network_traffic" />
+ 
+   <!-- Locale picker -->
+   <java-symbol type="id" name="locale_search_menu" />
+diff --git a/packages/SettingsProvider/src/android/provider/settings/backup/SystemSettings.java b/packages/SettingsProvider/src/android/provider/settings/backup/SystemSettings.java
+--- a/packages/SettingsProvider/src/android/provider/settings/backup/SystemSettings.java
++++ b/packages/SettingsProvider/src/android/provider/settings/backup/SystemSettings.java
+@@ -132,6 +132,13 @@
+                 Settings.System.CV_PREFERRED_INTENSITY,
+                 Settings.System.PEAK_REFRESH_RATE,
+                 Settings.System.MIN_REFRESH_RATE,
++                Settings.System.NETWORK_TRAFFIC_ENABLED,
++                Settings.System.NETWORK_TRAFFIC_MODE,
++                Settings.System.NETWORK_TRAFFIC_AUTOHIDE,
++                Settings.System.NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD,
++                Settings.System.NETWORK_TRAFFIC_UNITS,
++                Settings.System.NETWORK_TRAFFIC_REFRESH_INTERVAL,
++                Settings.System.NETWORK_TRAFFIC_HIDEARROW,
+                 Settings.System.ACCESSIBILITY_FORCE_INVERT_COLOR_OVERRIDE_PACKAGES_TO_DISABLE
+         ));
+         return settings.toArray(new String[0]);
+diff --git a/packages/SettingsProvider/src/android/provider/settings/validators/SystemSettingsValidators.java b/packages/SettingsProvider/src/android/provider/settings/validators/SystemSettingsValidators.java
+--- a/packages/SettingsProvider/src/android/provider/settings/validators/SystemSettingsValidators.java
++++ b/packages/SettingsProvider/src/android/provider/settings/validators/SystemSettingsValidators.java
+@@ -273,6 +273,14 @@
+         VALIDATORS.put(System.SCREEN_FLASH_NOTIFICATION_COLOR, ANY_INTEGER_VALIDATOR);
+         VALIDATORS.put(System.PEAK_REFRESH_RATE, NON_NEGATIVE_FLOAT_VALIDATOR);
+         VALIDATORS.put(System.MIN_REFRESH_RATE, NON_NEGATIVE_FLOAT_VALIDATOR);
++        VALIDATORS.put(System.NETWORK_TRAFFIC_ENABLED, BOOLEAN_VALIDATOR);
++        VALIDATORS.put(System.NETWORK_TRAFFIC_MODE, new InclusiveIntegerRangeValidator(0, 2));
++        VALIDATORS.put(System.NETWORK_TRAFFIC_AUTOHIDE, BOOLEAN_VALIDATOR);
++        VALIDATORS.put(System.NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD, NON_NEGATIVE_INTEGER_VALIDATOR);
++        VALIDATORS.put(System.NETWORK_TRAFFIC_UNITS, new InclusiveIntegerRangeValidator(0, 1));
++        VALIDATORS.put(System.NETWORK_TRAFFIC_REFRESH_INTERVAL,
++                new InclusiveIntegerRangeValidator(1, 60));
++        VALIDATORS.put(System.NETWORK_TRAFFIC_HIDEARROW, BOOLEAN_VALIDATOR);
+         VALIDATORS.put(System.NOTIFICATION_COOLDOWN_ENABLED, BOOLEAN_VALIDATOR);
+         VALIDATORS.put(System.NOTIFICATION_COOLDOWN_ALL, BOOLEAN_VALIDATOR);
+         VALIDATORS.put(System.NOTIFICATION_COOLDOWN_VIBRATE_UNLOCKED, BOOLEAN_VALIDATOR);
+diff --git a/packages/SystemUI/res/drawable/stat_sys_network_traffic.xml b/packages/SystemUI/res/drawable/stat_sys_network_traffic.xml
+new file mode 100644
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/stat_sys_network_traffic.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2019-2024 crDroid Android Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="14dp"
++    android:height="18dp"
++    android:viewportWidth="14"
++    android:viewportHeight="18">
++
++    <path
++        android:name="down"
++        android:fillColor="#4DFFFFFF"
++        android:pathData="M9,16l3-3h-2V8H8v5H6L9,16z" />
++
++    <path
++        android:name="up"
++        android:fillColor="#4DFFFFFF"
++        android:pathData="M5,2L2,5h2v5h2V5h2L5,2z" />
++
++</vector>
+diff --git a/packages/SystemUI/res/drawable/stat_sys_network_traffic_down.xml b/packages/SystemUI/res/drawable/stat_sys_network_traffic_down.xml
+new file mode 100644
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/stat_sys_network_traffic_down.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2019-2024 crDroid Android Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="14dp"
++    android:height="18dp"
++    android:viewportWidth="14"
++    android:viewportHeight="18">
++
++    <path
++        android:name="down"
++        android:fillColor="#FFFFFFFF"
++        android:pathData="M9,16l3-3h-2V8H8v5H6L9,16z" />
++
++    <path
++        android:name="up"
++        android:fillColor="#4DFFFFFF"
++        android:pathData="M5,2L2,5h2v5h2V5h2L5,2z" />
++
++</vector>
+diff --git a/packages/SystemUI/res/drawable/stat_sys_network_traffic_up.xml b/packages/SystemUI/res/drawable/stat_sys_network_traffic_up.xml
+new file mode 100644
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/stat_sys_network_traffic_up.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2019-2024 crDroid Android Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="14dp"
++    android:height="18dp"
++    android:viewportWidth="14"
++    android:viewportHeight="18">
++
++    <path
++        android:name="down"
++        android:fillColor="#4DFFFFFF"
++        android:pathData="M9,16l3-3h-2V8H8v5H6L9,16z" />
++
++    <path
++        android:name="up"
++        android:fillColor="#FFFFFFFF"
++        android:pathData="M5,2L2,5h2v5h2V5h2L5,2z" />
++
++</vector>
+diff --git a/packages/SystemUI/res/drawable/stat_sys_network_traffic_updown.xml b/packages/SystemUI/res/drawable/stat_sys_network_traffic_updown.xml
+new file mode 100644
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/stat_sys_network_traffic_updown.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2019-2024 crDroid Android Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="14dp"
++    android:height="18dp"
++    android:viewportWidth="14"
++    android:viewportHeight="18">
++
++    <path
++        android:name="down"
++        android:fillColor="#FFFFFFFF"
++        android:pathData="M9,16l3-3h-2V8H8v5H6L9,16z" />
++
++    <path
++        android:name="up"
++        android:fillColor="#FFFFFFFF"
++        android:pathData="M5,2L2,5h2v5h2V5h2L5,2z" />
++
++</vector>
+diff --git a/packages/SystemUI/res/values/network_traffic_strings.xml b/packages/SystemUI/res/values/network_traffic_strings.xml
+new file mode 100644
+--- /dev/null
++++ b/packages/SystemUI/res/values/network_traffic_strings.xml
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     Copyright (C) 2019-2024 crDroid Android Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<resources>
++    <!-- Units of the network speed indicator in the status bar -->
++    <string name="kilobitspersecond_short" translatable="false">kb/s</string>
++    <string name="megabitspersecond_short" translatable="false">Mb/s</string>
++    <string name="gigabitspersecond_short" translatable="false">Gb/s</string>
++    <string name="kilobytespersecond_short" translatable="false">kB/s</string>
++    <string name="megabytespersecond_short" translatable="false">MB/s</string>
++    <string name="gigabytespersecond_short" translatable="false">GB/s</string>
++</resources>
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/NetworkTraffic.java b/packages/SystemUI/src/com/android/systemui/statusbar/NetworkTraffic.java
+new file mode 100644
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/NetworkTraffic.java
+@@ -0,0 +1,698 @@
++/**
++ * Copyright (C) 2019-2024 crDroid Android Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.systemui.statusbar;
++
++import static com.android.systemui.statusbar.StatusBarIconView.STATE_ICON;
++
++import android.content.BroadcastReceiver;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.database.ContentObserver;
++import android.graphics.Color;
++import android.graphics.Rect;
++import android.graphics.Typeface;
++import android.graphics.drawable.Drawable;
++import android.net.ConnectivityManager;
++import android.net.LinkProperties;
++import android.net.Network;
++import android.net.NetworkCapabilities;
++import android.net.NetworkRequest;
++import android.net.TrafficStats;
++import android.os.Handler;
++import android.os.Looper;
++import android.os.Message;
++import android.os.SystemClock;
++import android.os.UserHandle;
++import android.provider.Settings;
++import android.text.Spanned;
++import android.text.SpannableString;
++import android.text.TextUtils;
++import android.text.style.AbsoluteSizeSpan;
++import android.util.AttributeSet;
++import android.view.Gravity;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.TextView;
++
++import androidx.core.content.res.ResourcesCompat;
++import androidx.core.graphics.drawable.DrawableCompat;
++
++import com.android.systemui.res.R;
++import com.android.systemui.plugins.DarkIconDispatcher;
++
++import java.text.DecimalFormat;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.stream.Stream;
++
++/**
++ * Status bar network speed indicator: shows the current download and upload speed of the
++ * networks that have working internet, driven by the {@code network_traffic_*} system settings.
++ *
++ * It reads its settings straight from {@link Settings.System} and only listens to the network
++ * while it is attached and enabled. In the status bar it is tinted by the {@code
++ * DarkIconDispatcher} (the icon manager registers it), in the quick settings header and on the
++ * keyguard by {@link #setStaticDrawableColor(int)}.
++ *
++ * @hide
++ */
++public class NetworkTraffic extends TextView implements StatusIconDisplayable {
++
++    // This must match the interface prefix in Connectivity's clatd.c.
++    private static final String CLAT_PREFIX = "v4-";
++
++    private static final int MODE_UPSTREAM_AND_DOWNSTREAM = 0;
++    private static final int MODE_UPSTREAM_ONLY = 1;
++    private static final int MODE_DOWNSTREAM_ONLY = 2;
++
++    private static final int MESSAGE_TYPE_PERIODIC_REFRESH = 0;
++    private static final int MESSAGE_TYPE_UPDATE_VIEW = 1;
++    private static final int MESSAGE_TYPE_ADD_NETWORK = 2;
++    private static final int MESSAGE_TYPE_REMOVE_NETWORK = 3;
++
++    private static final int Kilo = 1000;
++    private static final int Mega = Kilo * Kilo;
++    private static final int Giga = Mega * Kilo;
++
++    private static final String[] SETTINGS = {
++            Settings.System.NETWORK_TRAFFIC_ENABLED,
++            Settings.System.NETWORK_TRAFFIC_MODE,
++            Settings.System.NETWORK_TRAFFIC_AUTOHIDE,
++            Settings.System.NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD,
++            Settings.System.NETWORK_TRAFFIC_UNITS,
++            Settings.System.NETWORK_TRAFFIC_REFRESH_INTERVAL,
++            Settings.System.NETWORK_TRAFFIC_HIDEARROW,
++    };
++
++    private int mMode = MODE_UPSTREAM_AND_DOWNSTREAM;
++    private int mSubMode = MODE_UPSTREAM_AND_DOWNSTREAM;
++    private boolean mIsActive;
++    private boolean mTrafficActive;
++    private long mTxBytes;
++    private long mRxBytes;
++    private long mLastTxBytes;
++    private long mLastRxBytes;
++    private long mLastUpdateTime;
++    private boolean mAutoHide;
++    private long mAutoHideThreshold;
++    private int mUnits;
++    private int mTint = Color.WHITE;
++
++    private Drawable mDrawable;
++
++    private int mRefreshInterval = 2;
++
++    private boolean mAttached;
++    private boolean mCallbacksRegistered;
++    private boolean mStyled;
++    private boolean mHideArrows;
++    private boolean mBlocked;
++
++    private boolean mVisible;
++    private boolean mHasContent;
++
++    private ConnectivityManager mConnectivityManager;
++    private final Handler mTrafficHandler;
++
++    private final AbsoluteSizeSpan mSpeedAbsoluteSizeSpan = new AbsoluteSizeSpan(7, true);
++    private final AbsoluteSizeSpan mUnitAbsoluteSizeSpan = new AbsoluteSizeSpan(6, true);
++    private final DecimalFormat mDecimalFormat_0_2 = new DecimalFormat("0.##");
++    private final DecimalFormat mDecimalFormat_2_0 = new DecimalFormat("##0");
++    private final DecimalFormat mDecimalFormat_1_1 = new DecimalFormat("#0.#");
++
++    private boolean mEnabled = false;
++    private volatile boolean mHasValidatedInternet;
++
++    private final HashMap<Network, LinkProperties> mLinkPropertiesMap = new HashMap<>();
++    // Used to indicate that the set of sources contributing
++    // to current stats have changed.
++    private boolean mNetworksChanged = true;
++
++    private int mVisibleState = STATE_ICON;
++
++    private String mSlot;
++
++    private int mCurrentWidth = -1;
++
++    public NetworkTraffic(Context context) {
++        this(context, null);
++    }
++
++    public NetworkTraffic(Context context, AttributeSet attrs) {
++        this(context, attrs, 0);
++    }
++
++    public NetworkTraffic(Context context, AttributeSet attrs, int defStyle) {
++        super(context, attrs, defStyle);
++        mConnectivityManager =
++                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
++        // Hidden until the settings have been read and there is something to show.
++        setVisibility(View.GONE);
++        mTrafficHandler = new Handler(context.getMainLooper()) {
++            @Override
++            public void handleMessage(Message msg) {
++                switch (msg.what) {
++                    case MESSAGE_TYPE_PERIODIC_REFRESH:
++                        recalculateStats();
++                        displayStats();
++                        scheduleRefresh();
++                        break;
++
++                    case MESSAGE_TYPE_UPDATE_VIEW:
++                        displayStats();
++                        break;
++
++                    case MESSAGE_TYPE_ADD_NETWORK:
++                        final LinkPropertiesHolder lph = (LinkPropertiesHolder) msg.obj;
++                        mLinkPropertiesMap.put(lph.getNetwork(), lph.getLinkProperties());
++                        mNetworksChanged = true;
++                        updateViews();
++                        break;
++
++                    case MESSAGE_TYPE_REMOVE_NETWORK:
++                        mLinkPropertiesMap.remove((Network) msg.obj);
++                        mNetworksChanged = true;
++                        updateViews();
++                        break;
++                }
++            }
++
++            private void recalculateStats() {
++                final long now = SystemClock.elapsedRealtime();
++                long timeDelta = now - mLastUpdateTime; /* ms */
++
++                if (mLastUpdateTime == 0 || timeDelta <= 500) {
++                    // Too soon (or the first run) to compute a speed: restart from the next
++                    // sample so the counters are not compared against zero.
++                    mLastTxBytes = 0;
++                    mLastRxBytes = 0;
++                    mNetworksChanged = true;
++                    mLastUpdateTime = now;
++                    return;
++                }
++
++                // Sum tx and rx bytes from all sources of interest
++                long txBytes = 0;
++                long rxBytes = 0;
++                // Add interface stats, including stats from Clat's IPv4 interface
++                // (for applicable IPv6 networks). Stats are 0 if it doesn't exist.
++                final String[] ifaces = mLinkPropertiesMap.values().stream()
++                        .map(LinkProperties::getInterfaceName)
++                        .filter(iface -> iface != null && !iface.isEmpty())
++                        .distinct()
++                        .flatMap(iface -> Stream.of(iface, CLAT_PREFIX + iface))
++                        .toArray(String[]::new);
++                for (String iface : ifaces) {
++                    final long ifaceTxBytes = TrafficStats.getTxBytes(iface);
++                    final long ifaceRxBytes = TrafficStats.getRxBytes(iface);
++                    txBytes += ifaceTxBytes;
++                    rxBytes += ifaceRxBytes;
++                }
++
++                final long txBytesDelta = txBytes - mLastTxBytes;
++                final long rxBytesDelta = rxBytes - mLastRxBytes;
++
++                if (!mNetworksChanged && timeDelta > 0 && txBytesDelta >= 0 && rxBytesDelta >= 0) {
++                    mTxBytes = (long) (txBytesDelta / (timeDelta / 1000f));
++                    mRxBytes = (long) (rxBytesDelta / (timeDelta / 1000f));
++                } else if (mNetworksChanged) {
++                    mTxBytes = 0;
++                    mRxBytes = 0;
++                    mNetworksChanged = false;
++                }
++                mLastTxBytes = txBytes;
++                mLastRxBytes = rxBytes;
++                mLastUpdateTime = now;
++            }
++
++            private void displayStats() {
++                if (!mEnabled) {
++                    mIsActive = false;
++                    updateVisibility();
++                    return;
++                }
++
++                final boolean showUpstream =
++                        mMode == MODE_UPSTREAM_ONLY || mMode == MODE_UPSTREAM_AND_DOWNSTREAM;
++                final boolean showDownstream =
++                        mMode == MODE_DOWNSTREAM_ONLY || mMode == MODE_UPSTREAM_AND_DOWNSTREAM;
++                final boolean aboveThreshold = (showUpstream && mTxBytes > mAutoHideThreshold)
++                        || (showDownstream && mRxBytes > mAutoHideThreshold);
++                mIsActive = mAttached
++                        && mHasValidatedInternet
++                        && (!mAutoHide || aboveThreshold);
++
++                int submode = MODE_UPSTREAM_AND_DOWNSTREAM;
++                final boolean trafficactive = (mTxBytes > 0 || mRxBytes > 0);
++
++                if (mIsActive) {
++                    CharSequence output = "";
++                    if (showUpstream && showDownstream) {
++                        if (mTxBytes > mRxBytes) {
++                            output = formatOutput(mTxBytes);
++                            submode = MODE_UPSTREAM_ONLY;
++                        } else if (mTxBytes < mRxBytes) {
++                            output = formatOutput(mRxBytes);
++                            submode = MODE_DOWNSTREAM_ONLY;
++                        } else {
++                            output = formatOutput(mRxBytes);
++                            submode = MODE_UPSTREAM_AND_DOWNSTREAM;
++                        }
++                    } else if (showDownstream) {
++                        output = formatOutput(mRxBytes);
++                    } else if (showUpstream) {
++                        output = formatOutput(mTxBytes);
++                    }
++
++                    // Update view if there's anything new to show
++                    if (!TextUtils.equals(output, getText())) {
++                        setText(output);
++                    }
++                }
++
++                updateVisibility();
++
++                if (mVisible && (mSubMode != submode
++                        || mTrafficActive != trafficactive)) {
++                    mSubMode = submode;
++                    mTrafficActive = trafficactive;
++                    setTrafficDrawable();
++                }
++            }
++
++            private CharSequence formatOutput(long speed) {
++                String unit;
++                String formatSpeed;
++                SpannableString spanUnitString;
++                SpannableString spanSpeedString;
++                String gunit, munit, kunit;
++
++                if (mUnits == 0) {
++                    // speed is in bytes, convert to bits
++                    speed = speed * 8;
++                    gunit = getContext().getString(R.string.gigabitspersecond_short);
++                    munit = getContext().getString(R.string.megabitspersecond_short);
++                    kunit = getContext().getString(R.string.kilobitspersecond_short);
++                } else {
++                    gunit = getContext().getString(R.string.gigabytespersecond_short);
++                    munit = getContext().getString(R.string.megabytespersecond_short);
++                    kunit = getContext().getString(R.string.kilobytespersecond_short);
++                }
++
++                if (speed >= Giga) {
++                    unit = gunit;
++                    formatSpeed = mDecimalFormat_0_2.format(speed / (float) Giga);
++                } else if (speed >= 100 * Mega) {
++                    unit = munit;
++                    formatSpeed = mDecimalFormat_2_0.format(speed / (float) Mega);
++                } else if (speed >= 10 * Mega) {
++                    unit = munit;
++                    formatSpeed = mDecimalFormat_1_1.format(speed / (float) Mega);
++                } else if (speed >= Mega) {
++                    unit = munit;
++                    formatSpeed = mDecimalFormat_0_2.format(speed / (float) Mega);
++                } else if (speed >= 100 * Kilo) {
++                    unit = kunit;
++                    formatSpeed = mDecimalFormat_2_0.format(speed / (float) Kilo);
++                } else if (speed >= 10 * Kilo) {
++                    unit = kunit;
++                    formatSpeed = mDecimalFormat_1_1.format(speed / (float) Kilo);
++                } else {
++                    unit = kunit;
++                    formatSpeed = mDecimalFormat_0_2.format(speed / (float) Kilo);
++                }
++                spanSpeedString = new SpannableString(formatSpeed);
++                spanSpeedString.setSpan(mSpeedAbsoluteSizeSpan, 0, (formatSpeed).length(),
++                        Spanned.SPAN_INCLUSIVE_INCLUSIVE);
++
++                spanUnitString = new SpannableString(unit);
++                spanUnitString.setSpan(mUnitAbsoluteSizeSpan, 0, (unit).length(),
++                        Spanned.SPAN_INCLUSIVE_INCLUSIVE);
++                return TextUtils.concat(spanSpeedString, "\n", spanUnitString);
++            }
++        };
++    }
++
++    public static NetworkTraffic fromContext(Context context, String slot, boolean blocked) {
++        NetworkTraffic v = new NetworkTraffic(context);
++        v.setSlot(slot);
++        v.mBlocked = blocked;
++        return v;
++    }
++
++    public void setSlot(String slot) {
++        mSlot = slot;
++    }
++
++    @Override
++    public void setTextColor(int color) {
++        super.setTextColor(color);
++        mTint = color;
++        if (mDrawable != null) {
++            DrawableCompat.setTint(mDrawable, mTint);
++        }
++    }
++
++    /** Called by the dark icon dispatcher: only the status bar's icon manager registers us. */
++    @Override
++    public void onDarkChanged(ArrayList<Rect> areas, float darkIntensity, int tint) {
++        setTextColor(DarkIconDispatcher.getTint(areas, this, tint));
++    }
++
++    /** Called by the tinted icon managers (quick settings header, keyguard). */
++    @Override
++    public void setStaticDrawableColor(int color) {
++        setTextColor(color);
++    }
++
++    @Override
++    public void setDecorColor(int color) {
++    }
++
++    @Override
++    public String getSlot() {
++        return mSlot;
++    }
++
++    @Override
++    public boolean isIconVisible() {
++        return mHasContent;
++    }
++
++    @Override
++    public boolean isIconBlocked() {
++        return mBlocked;
++    }
++
++    @Override
++    public int getVisibleState() {
++        return mVisibleState;
++    }
++
++    @Override
++    public void setVisibleState(int state, boolean animate) {
++        mVisibleState = state;
++        updateVisibility();
++    }
++
++    // Network tracking related variables
++    private NetworkRequest mRequest = new NetworkRequest.Builder()
++            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
++            .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
++            .build();
++
++    private ConnectivityManager.NetworkCallback mNetworkCallback =
++            new ConnectivityManager.NetworkCallback() {
++                @Override
++                public void onLinkPropertiesChanged(Network network,
++                        LinkProperties linkProperties) {
++                    if (mTrafficHandler != null) {
++                        Message msg = Message.obtain(mTrafficHandler,
++                                MESSAGE_TYPE_ADD_NETWORK,
++                                new LinkPropertiesHolder(network, linkProperties));
++                        mTrafficHandler.sendMessage(msg);
++                    }
++                }
++
++                @Override
++                public void onAvailable(Network network) {
++                    LinkProperties lp = mConnectivityManager == null ? null
++                            : mConnectivityManager.getLinkProperties(network);
++                    if (lp != null && mTrafficHandler != null) {
++                        Message msg = Message.obtain(mTrafficHandler,
++                                MESSAGE_TYPE_ADD_NETWORK,
++                                new LinkPropertiesHolder(network, lp));
++                        mTrafficHandler.sendMessage(msg);
++                    }
++                }
++
++                @Override
++                public void onLost(Network network) {
++                    if (mTrafficHandler != null) {
++                        Message msg = Message.obtain(mTrafficHandler,
++                                MESSAGE_TYPE_REMOVE_NETWORK, network);
++                        mTrafficHandler.sendMessage(msg);
++                    }
++                }
++            };
++
++    private boolean hasValidatedInternet(Network network) {
++        if (network == null) return false;
++        NetworkCapabilities caps = mConnectivityManager.getNetworkCapabilities(network);
++        return caps != null
++                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
++                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
++    }
++
++    private final ConnectivityManager.NetworkCallback mDefaultNetworkCallback =
++            new ConnectivityManager.NetworkCallback() {
++                @Override
++                public void onAvailable(Network network) {
++                    mHasValidatedInternet = hasValidatedInternet(network);
++                    updateViews();
++                }
++
++                @Override
++                public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) {
++                    mHasValidatedInternet = caps != null
++                            && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
++                            && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
++                    updateViews();
++                }
++
++                @Override
++                public void onLost(Network network) {
++                    mHasValidatedInternet = false;
++                    updateViews();
++                }
++            };
++
++    private final ContentObserver mSettingsObserver =
++            new ContentObserver(new Handler(Looper.getMainLooper())) {
++                @Override
++                public void onChange(boolean selfChange) {
++                    loadSettings();
++                }
++            };
++
++    private final BroadcastReceiver mUserSwitchReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            // The settings are per user: read the ones of the new current user.
++            loadSettings();
++        }
++    };
++
++    @Override
++    protected void onAttachedToWindow() {
++        super.onAttachedToWindow();
++
++        if (!mAttached) {
++            mAttached = true;
++            final ContentResolver resolver = getContext().getContentResolver();
++            for (String setting : SETTINGS) {
++                resolver.registerContentObserver(Settings.System.getUriFor(setting),
++                        false, mSettingsObserver, UserHandle.USER_ALL);
++            }
++            getContext().registerReceiver(mUserSwitchReceiver,
++                    new IntentFilter(Intent.ACTION_USER_SWITCHED));
++            loadSettings();
++        }
++    }
++
++    @Override
++    protected void onDetachedFromWindow() {
++        super.onDetachedFromWindow();
++        if (mAttached) {
++            mAttached = false;
++            getContext().getContentResolver().unregisterContentObserver(mSettingsObserver);
++            getContext().unregisterReceiver(mUserSwitchReceiver);
++            updateCallbacks();
++            mDrawable = null;
++            setCompoundDrawables(null, null, null, null);
++        }
++    }
++
++    @Override
++    public void onRtlPropertiesChanged(int layoutDirection) {
++        super.onRtlPropertiesChanged(layoutDirection);
++        if (mAttached && mDrawable != null) {
++            setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, mDrawable, null);
++        }
++    }
++
++    private void updateVisibility() {
++        boolean hasContent = mEnabled && mIsActive && !TextUtils.isEmpty(getText());
++        // StatusIconContainer positions the icons from their current width, so the width only
++        // follows hasContent and a hide from the container keeps it (INVISIBLE, not GONE).
++        if (hasContent != mHasContent) {
++            mHasContent = hasContent;
++            setFixedWidth();
++        }
++        mVisible = mHasContent && mVisibleState == STATE_ICON;
++        setVisibility(mVisible ? View.VISIBLE : mHasContent ? View.INVISIBLE : View.GONE);
++    }
++
++    private void setFixedWidth() {
++        int requiredWidth = 0;
++        if (mHasContent && !mHideArrows) {
++            requiredWidth = (int) (30 * getResources().getDisplayMetrics().density);
++        } else if (mHasContent) {
++            requiredWidth = (int) (18 * getResources().getDisplayMetrics().density);
++        }
++        if (requiredWidth == mCurrentWidth) return;
++        ViewGroup.LayoutParams lp = getLayoutParams();
++        if (lp != null) {
++            mCurrentWidth = requiredWidth;
++            lp.width = requiredWidth;
++            setLayoutParams(lp);
++        }
++    }
++
++    private int getSetting(String key, int defaultValue) {
++        return Settings.System.getIntForUser(getContext().getContentResolver(), key,
++                defaultValue, UserHandle.USER_CURRENT);
++    }
++
++    /** Reads all settings of the current user and applies them. */
++    private void loadSettings() {
++        final boolean enabled = getSetting(Settings.System.NETWORK_TRAFFIC_ENABLED, 0) == 1;
++        final int mode = getSetting(Settings.System.NETWORK_TRAFFIC_MODE,
++                MODE_UPSTREAM_AND_DOWNSTREAM);
++        mMode = (mode >= MODE_UPSTREAM_AND_DOWNSTREAM && mode <= MODE_DOWNSTREAM_ONLY)
++                ? mode : MODE_UPSTREAM_AND_DOWNSTREAM;
++        mAutoHide = getSetting(Settings.System.NETWORK_TRAFFIC_AUTOHIDE, 0) == 1;
++        /* The threshold is in kB/s, convert to bytes */
++        mAutoHideThreshold =
++                (long) getSetting(Settings.System.NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD, 0) * Kilo;
++        mUnits = getSetting(Settings.System.NETWORK_TRAFFIC_UNITS, 1);
++        mRefreshInterval = Math.max(1,
++                getSetting(Settings.System.NETWORK_TRAFFIC_REFRESH_INTERVAL, 2));
++        mHideArrows = getSetting(Settings.System.NETWORK_TRAFFIC_HIDEARROW, 0) == 1;
++        mEnabled = enabled;
++
++        if (mEnabled && !mStyled) {
++            mStyled = true;
++            setLines(2);
++            setMaxLines(2);
++            String txtFont = getResources().getString(
++                    com.android.internal.R.string.config_bodyFontFamily);
++            setTypeface(Typeface.create(txtFont, Typeface.BOLD));
++            setLineSpacing(0f, 0.95f);
++            setLayoutDirection(View.LAYOUT_DIRECTION_LOCALE);
++            setTextDirection(View.TEXT_DIRECTION_LOCALE);
++            setTextAlignment(View.TEXT_ALIGNMENT_VIEW_END);
++            setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
++            setElegantTextHeight(false);
++            setIncludeFontPadding(false);
++        }
++
++        updateCallbacks();
++        setTrafficDrawable();
++        setFixedWidth();
++
++        // Restart the periodic refresh so a changed interval or mode shows up right away.
++        mTrafficHandler.removeMessages(MESSAGE_TYPE_PERIODIC_REFRESH);
++        if (mEnabled && mAttached) {
++            mTrafficHandler.sendEmptyMessage(MESSAGE_TYPE_PERIODIC_REFRESH);
++        } else {
++            mIsActive = false;
++            updateVisibility();
++        }
++    }
++
++    /** Listens to the network only while attached and enabled. */
++    private void updateCallbacks() {
++        final boolean wanted = mAttached && mEnabled;
++        if (wanted && !mCallbacksRegistered) {
++            mCallbacksRegistered = true;
++            mHasValidatedInternet = hasValidatedInternet(mConnectivityManager.getActiveNetwork());
++            mNetworksChanged = true;
++            mConnectivityManager.registerNetworkCallback(mRequest, mNetworkCallback);
++            mConnectivityManager.registerDefaultNetworkCallback(mDefaultNetworkCallback);
++        } else if (!wanted && mCallbacksRegistered) {
++            mCallbacksRegistered = false;
++            mConnectivityManager.unregisterNetworkCallback(mDefaultNetworkCallback);
++            mConnectivityManager.unregisterNetworkCallback(mNetworkCallback);
++            mTrafficHandler.removeCallbacksAndMessages(null);
++            mLinkPropertiesMap.clear();
++            mHasValidatedInternet = false;
++            mLastUpdateTime = 0;
++            mTxBytes = 0;
++            mRxBytes = 0;
++        }
++    }
++
++    private void scheduleRefresh() {
++        mTrafficHandler.removeMessages(MESSAGE_TYPE_PERIODIC_REFRESH);
++        if (mEnabled && mAttached) {
++            mTrafficHandler.sendEmptyMessageDelayed(MESSAGE_TYPE_PERIODIC_REFRESH,
++                    mRefreshInterval * 1000L);
++        }
++    }
++
++    private void updateViews() {
++        if (mEnabled) {
++            mTrafficHandler.removeMessages(MESSAGE_TYPE_UPDATE_VIEW);
++            mTrafficHandler.sendEmptyMessageDelayed(MESSAGE_TYPE_UPDATE_VIEW, 1000);
++        }
++    }
++
++    private void setTrafficDrawable() {
++        final int drawableResId;
++        if (mHideArrows) {
++            drawableResId = 0;
++        } else if (!mTrafficActive) {
++            drawableResId = R.drawable.stat_sys_network_traffic;
++        } else if (mMode == MODE_UPSTREAM_ONLY || mSubMode == MODE_UPSTREAM_ONLY) {
++            drawableResId = R.drawable.stat_sys_network_traffic_up;
++        } else if (mMode == MODE_DOWNSTREAM_ONLY || mSubMode == MODE_DOWNSTREAM_ONLY) {
++            drawableResId = R.drawable.stat_sys_network_traffic_down;
++        } else {
++            drawableResId = R.drawable.stat_sys_network_traffic_updown;
++        }
++        final Drawable drawable = drawableResId == 0 ? null
++                : ResourcesCompat.getDrawable(getResources(), drawableResId, getContext().getTheme());
++        if (drawable != null) {
++            DrawableCompat.setTint(drawable, mTint);
++        }
++        if (mDrawable != drawable) {
++            mDrawable = drawable;
++            setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, mDrawable, null);
++        }
++    }
++
++    private static class LinkPropertiesHolder {
++        private final Network mNetwork;
++        private final LinkProperties mLinkProperties;
++
++        public LinkPropertiesHolder(Network network, LinkProperties linkProperties) {
++            mNetwork = network;
++            mLinkProperties = linkProperties;
++        }
++
++        public Network getNetwork() {
++            return mNetwork;
++        }
++
++        public LinkProperties getLinkProperties() {
++            return mLinkProperties;
++        }
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarPolicy.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarPolicy.java
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarPolicy.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarPolicy.java
+@@ -124,6 +124,7 @@
+     private final String mSlotSensorsOff;
+     private final String mSlotScreenRecord;
+     private final String mSlotConnectedDisplay;
++    private final String mSlotNetworkTraffic;
+     private final int mDisplayId;
+     private final SharedPreferences mSharedPreferences;
+     private final DateFormatUtil mDateFormatUtil;
+@@ -241,6 +242,8 @@
+         mSlotSensorsOff = resources.getString(com.android.internal.R.string.status_bar_sensors_off);
+         mSlotScreenRecord = resources.getString(
+                 com.android.internal.R.string.status_bar_screen_record);
++        mSlotNetworkTraffic = resources.getString(
++                com.android.internal.R.string.status_bar_network_traffic);
+ 
+         mDisplayId = displayId;
+         mSharedPreferences = sharedPreferences;
+@@ -340,6 +343,9 @@
+         // screen record
+         mIconController.setIcon(mSlotScreenRecord, R.drawable.stat_sys_screen_record, null);
+         mIconController.setIconVisibility(mSlotScreenRecord, false);
++
++        // network speed indicator, shows or hides itself based on the network_traffic_* settings
++        mIconController.setNetworkTraffic(mSlotNetworkTraffic);
+ 
+         mRotationLockController.addCallback(this);
+         mBluetooth.addCallback(this);
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconHolder.kt b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconHolder.kt
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconHolder.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/StatusBarIconHolder.kt
+@@ -21,7 +21,7 @@
+ 
+ /** Wraps [com.android.internal.statusbar.StatusBarIcon] so we can still have a uniform list */
+ open class StatusBarIconHolder private constructor() {
+-    @IntDef(TYPE_ICON, TYPE_MOBILE_NEW, TYPE_WIFI_NEW, TYPE_BINDABLE)
++    @IntDef(TYPE_ICON, TYPE_MOBILE_NEW, TYPE_WIFI_NEW, TYPE_BINDABLE, TYPE_NETWORK_TRAFFIC)
+     @Retention(AnnotationRetention.SOURCE)
+     internal annotation class IconType
+ 
+@@ -44,7 +44,8 @@
+                 // this is effectively an unused return value.
+                 TYPE_BINDABLE,
+                 TYPE_MOBILE_NEW,
+-                TYPE_WIFI_NEW -> true
++                TYPE_WIFI_NEW,
++                TYPE_NETWORK_TRAFFIC -> true
+                 else -> true
+             }
+         set(visible) {
+@@ -55,7 +56,8 @@
+                 TYPE_ICON -> icon!!.visible = visible
+                 TYPE_BINDABLE,
+                 TYPE_MOBILE_NEW,
+-                TYPE_WIFI_NEW -> {}
++                TYPE_WIFI_NEW,
++                TYPE_NETWORK_TRAFFIC -> {}
+             }
+         }
+ 
+@@ -96,12 +98,16 @@
+         /** Only applicable to [BindableIconHolder] */
+         const val TYPE_BINDABLE = 5
+ 
++        /** The network speed indicator, which draws and updates itself. */
++        const val TYPE_NETWORK_TRAFFIC = 6
++
+         /** Returns a human-readable string representing the given type. */
+         fun getTypeString(@IconType type: Int): String {
+             return when (type) {
+                 TYPE_ICON -> "ICON"
+                 TYPE_MOBILE_NEW -> "MOBILE_NEW"
+                 TYPE_WIFI_NEW -> "WIFI_NEW"
++                TYPE_NETWORK_TRAFFIC -> "NETWORK_TRAFFIC"
+                 else -> "UNKNOWN"
+             }
+         }
+@@ -118,6 +124,14 @@
+         fun forNewWifiIcon(): StatusBarIconHolder {
+             val holder = StatusBarIconHolder()
+             holder.type = TYPE_WIFI_NEW
++            return holder
++        }
++
++        /** Creates a new holder for the network speed indicator. */
++        @JvmStatic
++        fun fromNetworkTraffic(): StatusBarIconHolder {
++            val holder = StatusBarIconHolder()
++            holder.type = TYPE_NETWORK_TRAFFIC
+             return holder
+         }
+ 
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/IconManager.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/IconManager.java
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/IconManager.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/IconManager.java
+@@ -19,6 +19,7 @@
+ import static com.android.systemui.statusbar.phone.StatusBarIconHolder.TYPE_BINDABLE;
+ import static com.android.systemui.statusbar.phone.StatusBarIconHolder.TYPE_ICON;
+ import static com.android.systemui.statusbar.phone.StatusBarIconHolder.TYPE_MOBILE_NEW;
++import static com.android.systemui.statusbar.phone.StatusBarIconHolder.TYPE_NETWORK_TRAFFIC;
+ import static com.android.systemui.statusbar.phone.StatusBarIconHolder.TYPE_WIFI_NEW;
+ 
+ import android.annotation.Nullable;
+@@ -37,6 +38,7 @@
+ 
+ import com.android.systemui.kairos.KairosNetwork;
+ import com.android.systemui.statusbar.BaseStatusBarFrameLayout;
++import com.android.systemui.statusbar.NetworkTraffic;
+ import com.android.systemui.statusbar.StatusBarIconView;
+ import com.android.systemui.statusbar.StatusIconDisplayable;
+ import com.android.systemui.statusbar.connectivity.ui.MobileContextProvider;
+@@ -177,6 +179,7 @@
+             case TYPE_ICON -> addIcon(index, slot, blocked, holder.getIcon());
+             case TYPE_WIFI_NEW -> addNewWifiIcon(index, slot);
+             case TYPE_MOBILE_NEW -> addNewMobileIcon(index, slot, holder.getTag());
++            case TYPE_NETWORK_TRAFFIC -> addNetworkTraffic(index, slot, blocked);
+             case TYPE_BINDABLE ->
+                 // Safe cast, since only BindableIconHolders can set this tag on themselves
+                     addBindableIcon((BindableIconHolder) holder, index);
+@@ -206,6 +209,12 @@
+         if (mIsInDemoMode) {
+             mDemoStatusIcons.addBindableIcon(holder);
+         }
++        return view;
++    }
++
++    protected StatusIconDisplayable addNetworkTraffic(int index, String slot, boolean blocked) {
++        NetworkTraffic view = NetworkTraffic.fromContext(mContext, slot, blocked);
++        mGroup.addView(view, index, onCreateLayoutParams(Shape.WRAP_CONTENT));
+         return view;
+     }
+ 
+@@ -330,6 +339,7 @@
+                 return;
+             case TYPE_MOBILE_NEW:
+             case TYPE_WIFI_NEW:
++            case TYPE_NETWORK_TRAFFIC:
+             case TYPE_BINDABLE:
+                 // Nothing, the new icons update themselves
+                 return;
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconController.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconController.java
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconController.java
+@@ -85,6 +85,12 @@
+     void setNewWifiIcon();
+ 
+     /**
++     * Sets up the network speed indicator in the given slot. No effect if it has already been set
++     * up (inflated and added to the view hierarchy).
++     */
++    default void setNetworkTraffic(String slot) {}
++
++    /**
+      * Notify this class that there is a new set of mobile icons to display, keyed off of this list
+      * of subIds. The icons will be added and bound to the mobile data pipeline via
+      * {@link com.android.systemui.statusbar.pipeline.mobile.ui.binder.MobileIconBinder}.
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconControllerImpl.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconControllerImpl.java
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconControllerImpl.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/ui/StatusBarIconControllerImpl.java
+@@ -312,6 +312,16 @@
+         }
+     }
+ 
++    @Override
++    public void setNetworkTraffic(String slot) {
++        StatusBarIconHolder holder = mStatusBarIconList.getIconHolder(slot, /* tag= */ 0);
++        if (holder == null) {
++            holder = StatusBarIconHolder.fromNetworkTraffic();
++            setIcon(slot, holder);
++        }
++        // The view updates itself, nothing to do if it already exists
++    }
++
+     /**
+      * Accept a list of MobileIconStates, which all live in the same slot(?!), and then are sorted
+      * by subId. Don't worry this definitely makes sense and works.
+-- 
+2.50.1

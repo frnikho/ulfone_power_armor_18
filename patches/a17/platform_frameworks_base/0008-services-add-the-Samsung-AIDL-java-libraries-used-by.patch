@@ -1,0 +1,32 @@
+From 3370228e5d019a7e88bd52fcb13e426a49b3041f Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 23:28:28 +0100
+Subject: [PATCH] services: add the Samsung AIDL java libraries used by the
+ TrebleDroid patches
+
+LineageOS' services/core lacks the sysinput/biometrics.fingerprint/light AIDL V1 java
+deps that the TrebleDroid Samsung support code needs.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+Change-Id: I4e89cb4f795bd5d4d9983f56871d351f539fc82b
+---
+ services/core/Android.bp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/services/core/Android.bp b/services/core/Android.bp
+index b6506cba0..9e8f61428 100644
+--- a/services/core/Android.bp
++++ b/services/core/Android.bp
+@@ -268,6 +268,8 @@ java_library_static {
+         // HIDL
+         "vendor.mediatek.hardware.mtkpower-V1.1-java",
+         "vendor.samsung.hardware.sysinput-V1.2-java",
++        "vendor.samsung.hardware.sysinput-V1-java",
++        "vendor.samsung.hardware.biometrics.fingerprint-V1-java",
+         "aconfig_adbdauth_flags_java_lib",
+         "textclassifier_flags_lib",
+         "lights_flags_lib",
+-- 
+2.56.0
+

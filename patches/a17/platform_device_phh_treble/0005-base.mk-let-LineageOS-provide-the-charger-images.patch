@@ -1,0 +1,33 @@
+From 191ff99788e827c6bc7109ecc505f4074c1b0e9c Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:59:27 +0100
+Subject: [PATCH] base.mk: let LineageOS provide the charger images
+
+vendor/lineage/charger installs the same files under system/product/etc/res/images/charger.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+---
+ base.mk | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/base.mk b/base.mk
+index 59b166a..4ea1721 100644
+--- a/base.mk
++++ b/base.mk
+@@ -52,9 +52,11 @@ PRODUCT_COPY_FILES += \
+ PRODUCT_COPY_FILES += \
+     device/phh/treble/charger.rc:system/etc/init/charger.rc
+ 
+-# Charger image
++# Charger image: provided by vendor/lineage/charger on LineageOS builds
++ifeq ($(LINEAGE_BUILD),)
+ PRODUCT_PACKAGES += \
+     product_charger_res_images
++endif
+ 
+ # USB Audio
+ PRODUCT_COPY_FILES += \
+-- 
+2.56.0
+

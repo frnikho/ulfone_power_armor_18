@@ -1,0 +1,961 @@
+From 44c3ca8acf9817c4872341fc1f6bb8aac0b87cdd Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Sun, 1 Nov 2026 22:44:54 +0100
+Subject: [PATCH] tests: drop the aiseal tests (they need the removed
+ virtualization tree)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+Change-Id: I1dfd32791ab23e4c047db14a33c81ae23d4c446a
+---
+ tests/aiseal/Android.bp                       |  47 ------
+ tests/aiseal/AndroidManifest.xml              |  33 ----
+ tests/aiseal/AndroidTest.xml                  |  72 --------
+ tests/aiseal/OWNERS                           |   1 -
+ tests/aiseal/TEST_MAPPING                     |   7 -
+ tests/aiseal/aiseal-test.prop                 |   4 -
+ tests/aiseal/src/AiSealManagerTest.java       | 128 ---------------
+ tests/aiseal/tenants/config/Android.bp        |  78 ---------
+ .../aiseal/tenants/config/AndroidManifest.xml |  18 --
+ .../tenants/config/assets/aiseal_config.json  |  15 --
+ .../tenants/config/assets/vm_config.json      |  27 ---
+ tests/aiseal/tenants/odim/Android.bp          |  69 --------
+ tests/aiseal/tenants/odim/AndroidManifest.xml |  36 ----
+ .../tests/odim/IAiSealOdimPayloadService.aidl |  28 ----
+ .../tests/odim/IAiSealOdimTestService.aidl    |  25 ---
+ .../tests/odim/AiSealOdimTestService.java     | 155 ------------------
+ tests/aiseal/tenants/odim/native/main.rs      |  67 --------
+ 17 files changed, 810 deletions(-)
+ delete mode 100644 tests/aiseal/Android.bp
+ delete mode 100644 tests/aiseal/AndroidManifest.xml
+ delete mode 100644 tests/aiseal/AndroidTest.xml
+ delete mode 100644 tests/aiseal/OWNERS
+ delete mode 100644 tests/aiseal/TEST_MAPPING
+ delete mode 100644 tests/aiseal/aiseal-test.prop
+ delete mode 100644 tests/aiseal/src/AiSealManagerTest.java
+ delete mode 100644 tests/aiseal/tenants/config/Android.bp
+ delete mode 100644 tests/aiseal/tenants/config/AndroidManifest.xml
+ delete mode 100644 tests/aiseal/tenants/config/assets/aiseal_config.json
+ delete mode 100644 tests/aiseal/tenants/config/assets/vm_config.json
+ delete mode 100644 tests/aiseal/tenants/odim/Android.bp
+ delete mode 100644 tests/aiseal/tenants/odim/AndroidManifest.xml
+ delete mode 100644 tests/aiseal/tenants/odim/aidl/android/aiseal/tests/odim/IAiSealOdimPayloadService.aidl
+ delete mode 100644 tests/aiseal/tenants/odim/aidl/android/aiseal/tests/odim/IAiSealOdimTestService.aidl
+ delete mode 100644 tests/aiseal/tenants/odim/java/android/aiseal/tests/odim/AiSealOdimTestService.java
+ delete mode 100644 tests/aiseal/tenants/odim/native/main.rs
+
+diff --git a/tests/aiseal/Android.bp b/tests/aiseal/Android.bp
+deleted file mode 100644
+index 766cdb204..000000000
+--- a/tests/aiseal/Android.bp
++++ /dev/null
+@@ -1,47 +0,0 @@
+-// Copyright (C) 2025 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-filegroup {
+-    name: "aiseal-test-device-files",
+-    srcs: [
+-        "aiseal-test.prop",
+-    ],
+-}
+-
+-android_test {
+-    name: "AiSealTestCases",
+-    // the aiseal payload is not built on the gsi
+-    enabled: false,
+-    team: "trendy_team_machine_learning",
+-    srcs: ["src/**/*.java"],
+-    platform_apis: true,
+-    certificate: "platform",
+-    static_libs: [
+-        "androidx.test.core",
+-        "androidx.test.ext.junit",
+-        "androidx.test.rules",
+-        "guava",
+-        "odim_aidl_interface-java",
+-    ],
+-    libs: [
+-        "android.test.runner.stubs.test",
+-        "android.test.base.stubs.test",
+-    ],
+-    data: [
+-        ":AiSealTestTenantConfig",
+-        ":AiSealTestHelperAppOdim",
+-        ":aiseal-test-device-files",
+-    ],
+-    test_suites: ["general-tests"],
+-}
+diff --git a/tests/aiseal/AndroidManifest.xml b/tests/aiseal/AndroidManifest.xml
+deleted file mode 100644
+index d0d31072b..000000000
+--- a/tests/aiseal/AndroidManifest.xml
++++ /dev/null
+@@ -1,33 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-  ~ Copyright (C) 2025 The Android Open Source Project
+-  ~
+-  ~ Licensed under the Apache License, Version 2.0 (the "License");
+-  ~ you may not use this file except in compliance with the License.
+-  ~ You may obtain a copy of the License at
+-  ~
+-  ~      http://www.apache.org/licenses/LICENSE-2.0
+-  ~
+-  ~ Unless required by applicable law or agreed to in writing, software
+-  ~ distributed under the License is distributed on an "AS IS" BASIS,
+-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-  ~ See the License for the specific language governing permissions and
+-  ~ limitations under the License.
+-  -->
+-
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="android.aiseal.tests">
+-
+-    <uses-feature android:name="android.software.aiseal" android:required="true" />
+-
+-    <uses-permission android:name="android.permission.MANAGE_AISEAL_VIRTUAL_MACHINE"/>
+-    <uses-permission android:name="android.aiseal.tests.odim.permission.BIND_ODIM_SERVICE"/>
+-
+-    <application>
+-        <uses-library android:name="android.test.runner" />
+-    </application>
+-
+-    <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
+-                     android:label="Tests for the AiSeal platform APIs."
+-                     android:targetPackage="android.aiseal.tests" />
+-</manifest>
+diff --git a/tests/aiseal/AndroidTest.xml b/tests/aiseal/AndroidTest.xml
+deleted file mode 100644
+index 333743676..000000000
+--- a/tests/aiseal/AndroidTest.xml
++++ /dev/null
+@@ -1,72 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-  ~ Copyright (C) 2025 The Android Open Source Project
+-  ~
+-  ~ Licensed under the Apache License, Version 2.0 (the "License");
+-  ~ you may not use this file except in compliance with the License.
+-  ~ You may obtain a copy of the License at
+-  ~
+-  ~      http://www.apache.org/licenses/LICENSE-2.0
+-  ~
+-  ~ Unless required by applicable law or agreed to in writing, software
+-  ~ distributed under the License is distributed on an "AS IS" BASIS,
+-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-  ~ See the License for the specific language governing permissions and
+-  ~ limitations under the License.
+-  -->
+-
+-<configuration description="Config for AiSeal tests">
+-    <option name="test-suite-tag" value="apct" />
+-
+-    <option name="config-descriptor:metadata" key="component" value="framework" />
+-    <!-- Only system apps can access AiSeal APIs, no instant apps -->
+-    <option name="config-descriptor:metadata" key="parameter" value="not_instant_app" />
+-    <!-- Tests would have native code, so test on multiple ABIs -->
+-    <option name="config-descriptor:metadata" key="parameter" value="multi_abi" />
+-    <!-- AiSeal API is available only for system user -->
+-    <option name="config-descriptor:metadata" key="parameter" value="not_secondary_user" />
+-
+-    <!-- Skip tests if device does not have the AiSeal feature -->
+-    <object type="module_controller"
+-            class="com.android.tradefed.testtype.suite.module.DeviceFeatureModuleController">
+-        <option name="required-feature" value="android.software.aiseal" />
+-    </object>
+-
+-    <!-- Test requires root to change AiSeal configuration. -->
+-    <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer">
+-        <option name="force-root" value="true"/>
+-    </target_preparer>
+-
+-    <!-- Install platform-signed test apps. -->
+-    <target_preparer class="com.android.tradefed.targetprep.suite.SuiteApkInstaller">
+-        <option name="cleanup-apks" value="true" />
+-        <option name="test-file-name" value="AiSealTestCases.apk" />
+-        <option name="test-file-name" value="AiSealTestTenantConfig.apk" />
+-        <option name="test-file-name" value="AiSealTestHelperAppOdim.apk" />
+-    </target_preparer>
+-
+-    <!-- Reboot the system after test to restore system properties. -->
+-    <target_preparer class="com.android.tradefed.targetprep.RebootTargetPreparer">
+-        <option name="pre-reboot" value="false" />
+-        <option name="post-reboot" value="true" />
+-    </target_preparer>
+-
+-    <!-- Push AiSeal configuration. -->
+-    <target_preparer class="com.android.tradefed.targetprep.PushFilePreparer">
+-        <option name="abort-on-push-failure" value="true" />
+-        <option name="push-file" key="aiseal-test.prop" value="/data/local.prop" />
+-        <option name="cleanup" value="true" />
+-    </target_preparer>
+-
+-    <!-- Set proper permissions for the AiSeal configuration. -->
+-    <target_preparer class="com.android.tradefed.targetprep.RunCommandTargetPreparer">
+-        <option name="run-command" value="chmod 644 /data/local.prop" />
+-    </target_preparer>
+-
+-    <!-- Reboot the system to apply changes to the system files. -->
+-    <target_preparer class="com.android.tradefed.targetprep.RebootTargetPreparer" />
+-
+-    <test class="com.android.tradefed.testtype.AndroidJUnitTest" >
+-        <option name="package" value="android.aiseal.tests" />
+-    </test>
+-</configuration>
+diff --git a/tests/aiseal/OWNERS b/tests/aiseal/OWNERS
+deleted file mode 100644
+index 74de7e351..000000000
+--- a/tests/aiseal/OWNERS
++++ /dev/null
+@@ -1 +0,0 @@
+-include platform/frameworks/base:/core/java/android/aiseal/OWNERS
+diff --git a/tests/aiseal/TEST_MAPPING b/tests/aiseal/TEST_MAPPING
+deleted file mode 100644
+index c7c24ae29..000000000
+--- a/tests/aiseal/TEST_MAPPING
++++ /dev/null
+@@ -1,7 +0,0 @@
+-{
+-  "presubmit": [
+-    {
+-      "name": "AiSealTestCases"
+-    }
+-  ]
+-}
+diff --git a/tests/aiseal/aiseal-test.prop b/tests/aiseal/aiseal-test.prop
+deleted file mode 100644
+index f916e2043..000000000
+--- a/tests/aiseal/aiseal-test.prop
++++ /dev/null
+@@ -1,4 +0,0 @@
+-service.aiseal.enable=1
+-service.aiseal.tenant_config_package=android.aiseal.tests.config
+-service.aiseal.tenant_config_path=assets/vm_config.json
+-service.aiseal.aiseal_config_path=assets/aiseal_config.json
+diff --git a/tests/aiseal/src/AiSealManagerTest.java b/tests/aiseal/src/AiSealManagerTest.java
+deleted file mode 100644
+index c65080e10..000000000
+--- a/tests/aiseal/src/AiSealManagerTest.java
++++ /dev/null
+@@ -1,128 +0,0 @@
+-/*
+- * Copyright (C) 2025 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package android.aiseal.tests;
+-
+-import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
+-
+-import static org.junit.Assert.assertEquals;
+-import static org.junit.Assert.assertNotNull;
+-import static org.junit.Assert.assertThrows;
+-import static org.junit.Assume.assumeTrue;
+-
+-import android.aiseal.AiSealException;
+-import android.aiseal.AiSealManager;
+-import android.aiseal.Flags;
+-import android.aiseal.tests.odim.IAiSealOdimPayloadService;
+-import android.aiseal.tests.odim.IAiSealOdimTestService;
+-import android.content.ComponentName;
+-import android.content.Context;
+-import android.content.Intent;
+-import android.content.ServiceConnection;
+-import android.os.IBinder;
+-import android.util.Log;
+-
+-import androidx.annotation.NonNull;
+-import androidx.test.ext.junit.runners.AndroidJUnit4;
+-
+-import com.google.common.util.concurrent.AbstractFuture;
+-
+-import org.junit.Before;
+-import org.junit.Test;
+-import org.junit.runner.RunWith;
+-
+-import java.util.concurrent.ExecutionException;
+-import java.util.concurrent.TimeUnit;
+-import java.util.concurrent.TimeoutException;
+-
+-@RunWith(AndroidJUnit4.class)
+-public class AiSealManagerTest {
+-    private static final String TAG = AiSealManagerTest.class.getSimpleName();
+-    private Context mContext;
+-    private AiSealManager mAiSeal;
+-    private Intent mOdimTestServiceBindIntent = null;
+-    private OdimTestServiceConnection mOdimTestServiceConnection = null;
+-
+-    @Before
+-    public void setUp() throws Exception {
+-        assumeTrue("AiSeal API is not available", Flags.aisealHostApis());
+-        mContext = getInstrumentation().getContext();
+-        mAiSeal = mContext.getSystemService(AiSealManager.class);
+-        assertNotNull("AiSeal manager is null", mAiSeal);
+-        mOdimTestServiceBindIntent = new Intent(IAiSealOdimTestService.class.getName());
+-        mOdimTestServiceBindIntent.setPackage(IAiSealOdimTestService.class.getPackage().getName());
+-    }
+-
+-    @Test
+-    public void testAiSealManager_connectFromAppNotInTenantConfigThrowsException()
+-            throws Exception {
+-        assertThrows(
+-                "connectService should throw exception if called from app not in tenant config",
+-                AiSealException.class,
+-                () -> mAiSeal.connectService(IAiSealOdimPayloadService.SERVICE_NAME));
+-    }
+-
+-    @Test
+-    public void testAiSealManager_connectThroughOdim() throws Exception {
+-        IAiSealOdimTestService service = getOdimTestService();
+-        String result = service.joinStringsWithSpace("hello", "world");
+-        assertEquals("Incorrect ODIM service response", "hello world", result);
+-    }
+-
+-    @Test
+-    public void testAiSealManager_connectAfterPayloadExit() throws Exception {
+-        IAiSealOdimTestService service = getOdimTestService();
+-        service.exit(1);
+-        String result = service.joinStringsWithSpace("hello", "world");
+-        assertEquals("Incorrect ODIM service response", "hello world", result);
+-    }
+-
+-    private class OdimTestServiceConnection extends AbstractFuture<IAiSealOdimTestService>
+-            implements ServiceConnection {
+-        @Override
+-        public void onServiceConnected(ComponentName name, IBinder binder) {
+-            Log.d(TAG, "onServiceConnected " + name);
+-            set(IAiSealOdimTestService.Stub.asInterface(binder));
+-        }
+-
+-        @Override
+-        public void onServiceDisconnected(ComponentName name) {
+-            Log.d(TAG, "onServiceDisconnected " + name);
+-        }
+-
+-        @Override
+-        public IAiSealOdimTestService get() throws InterruptedException, ExecutionException {
+-            try {
+-                return get(10, TimeUnit.SECONDS);
+-            } catch (TimeoutException e) {
+-                throw new ExecutionException(e);
+-            }
+-        }
+-    }
+-
+-    private @NonNull IAiSealOdimTestService getOdimTestService() throws Exception {
+-        if (mOdimTestServiceConnection == null) {
+-            mOdimTestServiceConnection = new OdimTestServiceConnection();
+-            mContext.bindService(
+-                    mOdimTestServiceBindIntent,
+-                    mOdimTestServiceConnection,
+-                    Context.BIND_AUTO_CREATE);
+-        }
+-        IAiSealOdimTestService service = mOdimTestServiceConnection.get();
+-        assertNotNull("Could not connect to ODIM test service", service);
+-        return service;
+-    }
+-}
+diff --git a/tests/aiseal/tenants/config/Android.bp b/tests/aiseal/tenants/config/Android.bp
+deleted file mode 100644
+index ddbb992c4..000000000
+--- a/tests/aiseal/tenants/config/Android.bp
++++ /dev/null
+@@ -1,78 +0,0 @@
+-// Copyright (C) 2025 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-genrule {
+-    name: "aiseal_test_odim_version",
+-    // the aiseal payload is not built on the gsi
+-    enabled: false,
+-    device_first_srcs: [
+-        "//frameworks/base/tests/aiseal/tenants/odim:AiSealTestHelperAppOdim",
+-    ],
+-    out: ["aiseal_test_odim_version.txt"],
+-    tools: [":aapt2"],
+-    cmd: "$(location :aapt2) dump badging $(in) | grep -o \"versionCode='[^']*'\" | cut -d\"'\" -f2 > $(out)",
+-}
+-
+-genrule {
+-    name: "aiseal_test_odim_expected_authority",
+-    // the aiseal payload is not built on the gsi
+-    enabled: false,
+-    device_first_srcs: [
+-        "//frameworks/base/tests/aiseal/tenants/odim:AiSealTestHelperAppOdim",
+-    ],
+-    out: ["aiseal_test_odim_expected_authority.txt"],
+-    tools: [":apksigner"],
+-    cmd: "$(location :apksigner) verify --print-certs-pem --min-sdk-version 24 --in $(in) | " +
+-        "openssl x509 -inform PEM -outform DER | sha512sum | cut -d ' ' -f 1 > $(out)",
+-}
+-
+-genrule {
+-    name: "aiseal_test_vm_config_json",
+-    // the aiseal payload is not built on the gsi
+-    enabled: false,
+-    srcs: [
+-        "assets/vm_config.json",
+-        ":aiseal_test_odim_expected_authority",
+-        ":aiseal_test_odim_version",
+-    ],
+-    out: ["vm_config.json"],
+-    cmd: "sed \"s/{ODIM_EXPECTED_AUTHORITY}/$$(cat $(location :aiseal_test_odim_expected_authority))/g\" $(location assets/vm_config.json) | " +
+-        "sed \"s/{ODIM_VERSION}/$$(cat $(location :aiseal_test_odim_version))/g\" > $(out)",
+-}
+-
+-genrule {
+-    name: "aiseal_test_aiseal_config_json",
+-    // the aiseal payload is not built on the gsi
+-    enabled: false,
+-    srcs: ["assets/aiseal_config.json"],
+-    out: ["aiseal_config.json"],
+-    cmd: "cp -f $(in) $(out)",
+-}
+-
+-android_test_helper_app {
+-    name: "AiSealTestTenantConfig",
+-    // the aiseal payload is not built on the gsi
+-    enabled: false,
+-    asset_dirs: [],
+-    assets: [
+-        ":aiseal_test_vm_config_json",
+-        ":aiseal_test_aiseal_config_json",
+-    ],
+-    certificate: "platform",
+-    sdk_version: "current",
+-}
+diff --git a/tests/aiseal/tenants/config/AndroidManifest.xml b/tests/aiseal/tenants/config/AndroidManifest.xml
+deleted file mode 100644
+index 272325300..000000000
+--- a/tests/aiseal/tenants/config/AndroidManifest.xml
++++ /dev/null
+@@ -1,18 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!-- Copyright (C) 2025 The Android Open Source Project
+-     Licensed under the Apache License, Version 2.0 (the "License");
+-     you may not use this file except in compliance with the License.
+-     You may obtain a copy of the License at
+-
+-          http://www.apache.org/licenses/LICENSE-2.0
+-
+-     Unless required by applicable law or agreed to in writing, software
+-     distributed under the License is distributed on an "AS IS" BASIS,
+-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-     See the License for the specific language governing permissions and
+-     limitations under the License.
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-    package="android.aiseal.tests.config">
+-    <application android:hasCode="false"/>
+-</manifest>
+diff --git a/tests/aiseal/tenants/config/assets/aiseal_config.json b/tests/aiseal/tenants/config/assets/aiseal_config.json
+deleted file mode 100644
+index 3c969b835..000000000
+--- a/tests/aiseal/tenants/config/assets/aiseal_config.json
++++ /dev/null
+@@ -1,15 +0,0 @@
+-{
+-  "version": 1,
+-  "tenants": [
+-    {
+-      "name": "android.aiseal.tests.odim",
+-      "role": "ondeviceintelligence",
+-      "host_services": [
+-        {
+-          "name": "odim_payload_service",
+-          "port": 5142
+-        }
+-      ]
+-    }
+-  ]
+-}
+diff --git a/tests/aiseal/tenants/config/assets/vm_config.json b/tests/aiseal/tenants/config/assets/vm_config.json
+deleted file mode 100644
+index 50c5f182c..000000000
+--- a/tests/aiseal/tenants/config/assets/vm_config.json
++++ /dev/null
+@@ -1,27 +0,0 @@
+-{
+-  "version": 1,
+-  "os": {
+-    "name": "microdroid"
+-  },
+-  "tenants": [
+-    {
+-      "package": "apk",
+-      "name": "android.aiseal.tests.odim",
+-      "uid": 10000,
+-      "min_version": {ODIM_VERSION},
+-      "expected_authority": {
+-          "dev-keys": "{ODIM_EXPECTED_AUTHORITY}",
+-          "test-keys": "{ODIM_EXPECTED_AUTHORITY}",
+-          "release-keys": "{ODIM_EXPECTED_AUTHORITY}"
+-      },
+-      "task": {
+-          "type": "microdroid_launcher",
+-          "command": "libtest_aiseal_odim_payload.so"
+-      }
+-    }
+-  ],
+-  "export_tombstones": false,
+-  "enable_authfs": false,
+-  "hugepages": true,
+-  "dm_default_key": true
+-}
+diff --git a/tests/aiseal/tenants/odim/Android.bp b/tests/aiseal/tenants/odim/Android.bp
+deleted file mode 100644
+index a29262f32..000000000
+--- a/tests/aiseal/tenants/odim/Android.bp
++++ /dev/null
+@@ -1,69 +0,0 @@
+-// Copyright (C) 2025 The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//      http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-package {
+-    default_applicable_licenses: ["Android-Apache-2.0"],
+-}
+-
+-aidl_interface {
+-    name: "odim_aidl_interface",
+-    srcs: ["aidl/**/*.aidl"],
+-    unstable: true,
+-    local_include_dir: "aidl",
+-    backend: {
+-        java: {
+-            enabled: true,
+-        },
+-        rust: {
+-            enabled: true,
+-        },
+-    },
+-}
+-
+-rust_ffi {
+-    name: "libtest_aiseal_odim_payload",
+-    crate_name: "test_aiseal_odim_payload",
+-    // the virtualization stack is not built on the gsi
+-    enabled: false,
+-    srcs: ["native/main.rs"],
+-    edition: "2021",
+-    prefer_rlib: true,
+-    defaults: ["avf_build_flags_rust"],
+-    rustlibs: [
+-        "odim_aidl_interface-rust",
+-        "libandroid_logger",
+-        "libanyhow",
+-        "libbinder_rs",
+-        "liblog_rust",
+-        "libvm_payload_rs",
+-    ],
+-}
+-
+-android_test_helper_app {
+-    name: "AiSealTestHelperAppOdim",
+-    // the aiseal payload is not built on the gsi
+-    enabled: false,
+-    srcs: ["java/**/*.java"],
+-    platform_apis: true,
+-    certificate: "platform",
+-    static_libs: [
+-        "androidx.annotation_annotation",
+-        "odim_aidl_interface-java",
+-    ],
+-    sdk_version: "system_current",
+-    jni_libs: ["libtest_aiseal_odim_payload"],
+-    jni_uses_platform_apis: true,
+-    use_embedded_native_libs: true,
+-    compile_multilib: "first",
+-}
+diff --git a/tests/aiseal/tenants/odim/AndroidManifest.xml b/tests/aiseal/tenants/odim/AndroidManifest.xml
+deleted file mode 100644
+index 7480c1ba8..000000000
+--- a/tests/aiseal/tenants/odim/AndroidManifest.xml
++++ /dev/null
+@@ -1,36 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!-- Copyright (C) 2025 The Android Open Source Project
+-     Licensed under the Apache License, Version 2.0 (the "License");
+-     you may not use this file except in compliance with the License.
+-     You may obtain a copy of the License at
+-
+-          http://www.apache.org/licenses/LICENSE-2.0
+-
+-     Unless required by applicable law or agreed to in writing, software
+-     distributed under the License is distributed on an "AS IS" BASIS,
+-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-     See the License for the specific language governing permissions and
+-     limitations under the License.
+--->
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="android.aiseal.tests.odim">
+-
+-    <uses-feature android:name="android.software.aiseal" android:required="true" />
+-
+-    <uses-permission android:name="android.permission.MANAGE_AISEAL_VIRTUAL_MACHINE"/>
+-
+-    <permission android:name="android.aiseal.tests.odim.permission.BIND_ODIM_SERVICE"
+-                android:protectionLevel="signature" />
+-
+-    <application>
+-        <service
+-            android:name="android.aiseal.tests.odim.AiSealOdimTestService"
+-            android:permission="android.aiseal.tests.odim.permission.BIND_ODIM_SERVICE"
+-            android:exported="true">
+-            <intent-filter>
+-                <action android:name="android.aiseal.tests.odim.IAiSealOdimTestService" />
+-            </intent-filter>
+-        </service>
+-    </application>
+-
+-</manifest>
+diff --git a/tests/aiseal/tenants/odim/aidl/android/aiseal/tests/odim/IAiSealOdimPayloadService.aidl b/tests/aiseal/tenants/odim/aidl/android/aiseal/tests/odim/IAiSealOdimPayloadService.aidl
+deleted file mode 100644
+index b982813b3..000000000
+--- a/tests/aiseal/tenants/odim/aidl/android/aiseal/tests/odim/IAiSealOdimPayloadService.aidl
++++ /dev/null
+@@ -1,28 +0,0 @@
+-/*
+- * Copyright 2025 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package android.aiseal.tests.odim;
+-
+-/**
+- * The service exposed by the ODIM test payload to the host.
+- * {@hide}
+- */
+-interface IAiSealOdimPayloadService {
+-    const String SERVICE_NAME = "odim_payload_service";
+-    const long PORT = 5142;
+-
+-    String joinStringsWithSpace(String a, String b);
+-    oneway void exit(int status);
+-}
+diff --git a/tests/aiseal/tenants/odim/aidl/android/aiseal/tests/odim/IAiSealOdimTestService.aidl b/tests/aiseal/tenants/odim/aidl/android/aiseal/tests/odim/IAiSealOdimTestService.aidl
+deleted file mode 100644
+index 9dca209ba..000000000
+--- a/tests/aiseal/tenants/odim/aidl/android/aiseal/tests/odim/IAiSealOdimTestService.aidl
++++ /dev/null
+@@ -1,25 +0,0 @@
+-/*
+- * Copyright 2025 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package android.aiseal.tests.odim;
+-
+-/**
+- * The service exposed by the ODIM test app.
+- * {@hide}
+- */
+-interface IAiSealOdimTestService {
+-    String joinStringsWithSpace(String a, String b);
+-    void exit(int status);
+-}
+diff --git a/tests/aiseal/tenants/odim/java/android/aiseal/tests/odim/AiSealOdimTestService.java b/tests/aiseal/tenants/odim/java/android/aiseal/tests/odim/AiSealOdimTestService.java
+deleted file mode 100644
+index ad9ebc08a..000000000
+--- a/tests/aiseal/tenants/odim/java/android/aiseal/tests/odim/AiSealOdimTestService.java
++++ /dev/null
+@@ -1,155 +0,0 @@
+-/*
+- * Copyright (C) 2025 The Android Open Source Project
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *      http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package android.aiseal.tests.odim;
+-
+-import android.aiseal.AiSealManager;
+-import android.app.Service;
+-import android.content.Intent;
+-import android.os.Handler;
+-import android.os.HandlerThread;
+-import android.os.IBinder;
+-import android.os.RemoteException;
+-import android.text.format.DateUtils;
+-import android.util.Log;
+-import androidx.annotation.GuardedBy;
+-
+-public class AiSealOdimTestService extends Service {
+-    private static final String TAG = AiSealOdimTestService.class.getSimpleName();
+-    private final AiSealOdimTestServiceImpl mService = new AiSealOdimTestServiceImpl();
+-
+-    @Override
+-    public void onCreate() {
+-        super.onCreate();
+-        mService.onCreate();
+-    }
+-
+-    @Override
+-    public void onDestroy() {
+-        mService.onDestroy();
+-        super.onDestroy();
+-    }
+-
+-    public class AiSealOdimTestServiceImpl extends IAiSealOdimTestService.Stub {
+-        private final HandlerThread mHandlerThread =
+-                new HandlerThread("AiSealOdimTestServiceThread");
+-        private Handler mHandler;
+-
+-        // Synchronizes AiSeal service connection.
+-        private static final Object sLock = new Object();
+-
+-        @GuardedBy("sLock")
+-        private IAiSealOdimPayloadService mGuestService;
+-
+-        public void onCreate() {
+-            mHandlerThread.start();
+-            mHandler = new Handler(mHandlerThread.getLooper());
+-            mHandler.post(
+-                    () -> {
+-                        connectGuestService();
+-                    });
+-        }
+-
+-        public void onDestroy() {
+-            mHandlerThread.quitSafely();
+-        }
+-
+-        private void connectGuestService() {
+-            synchronized (sLock) {
+-                connectGuestServiceLocked();
+-            }
+-        }
+-
+-        @GuardedBy("sLock")
+-        private void connectGuestServiceLocked() {
+-            // Reset the service to null if we are currently connected to it.
+-            mGuestService = null;
+-            sLock.notifyAll();
+-
+-            IBinder binder = null;
+-            try {
+-                AiSealManager mAiSeal =
+-                        getApplicationContext().getSystemService(AiSealManager.class);
+-                binder = mAiSeal.connectService(IAiSealOdimPayloadService.SERVICE_NAME);
+-                binder.linkToDeath(
+-                        () -> {
+-                            Log.w(TAG, "Guest service died");
+-                            connectGuestService();
+-                        },
+-                        0);
+-            } catch (Exception e) {
+-                Log.e(TAG, "Failed to connect to guest service", e);
+-            }
+-            if (binder != null) {
+-                mGuestService = IAiSealOdimPayloadService.Stub.asInterface(binder);
+-                sLock.notifyAll();
+-            } else {
+-                Log.i(TAG, "Guest service not yet available; trying again");
+-                mHandler.postDelayed(
+-                        () -> {
+-                            connectGuestService();
+-                        },
+-                        DateUtils.SECOND_IN_MILLIS);
+-            }
+-        }
+-
+-        private IAiSealOdimPayloadService waitForGuestService() throws InterruptedException {
+-            synchronized (sLock) {
+-                while (mGuestService == null) {
+-                    Log.i(TAG, "Waiting for guest service...");
+-                    sLock.wait();
+-                }
+-                return mGuestService;
+-            }
+-        }
+-
+-        @Override
+-        public String joinStringsWithSpace(String a, String b) {
+-            Log.d(TAG, "joinStringsWithSpace()");
+-            try {
+-                var guest = waitForGuestService();
+-                return guest.joinStringsWithSpace(a, b);
+-            } catch (Exception e) {
+-                Log.e(TAG, "Failed to call guest service", e);
+-                throw new IllegalStateException("Failed to call guest service", e);
+-            }
+-        }
+-
+-        @Override
+-        public void exit(int status) {
+-            Log.d(TAG, "exit()");
+-            try {
+-                var guest = waitForGuestService();
+-                guest.exit(status);
+-                synchronized (sLock) {
+-                    while (mGuestService != null) {
+-                        Log.i(TAG, "Waiting for guest service to stop...");
+-                        sLock.wait();
+-                    }
+-                }
+-            } catch (Exception e) {
+-                Log.e(TAG, "Failed to stop guest service", e);
+-                throw new IllegalStateException("Failed to stop guest service", e);
+-            }
+-        }
+-    }
+-
+-    @Override
+-    public IBinder onBind(Intent intent) {
+-        Log.d(TAG, "onBind()");
+-        return mService;
+-    }
+-}
+diff --git a/tests/aiseal/tenants/odim/native/main.rs b/tests/aiseal/tenants/odim/native/main.rs
+deleted file mode 100644
+index e1452ffc4..000000000
+--- a/tests/aiseal/tenants/odim/native/main.rs
++++ /dev/null
+@@ -1,67 +0,0 @@
+-// Copyright 2025, The Android Open Source Project
+-//
+-// Licensed under the Apache License, Version 2.0 (the "License");
+-// you may not use this file except in compliance with the License.
+-// You may obtain a copy of the License at
+-//
+-//     http://www.apache.org/licenses/LICENSE-2.0
+-//
+-// Unless required by applicable law or agreed to in writing, software
+-// distributed under the License is distributed on an "AS IS" BASIS,
+-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-// See the License for the specific language governing permissions and
+-// limitations under the License.
+-
+-//! On-device Intelligence Manager payload for AiSeal test.
+-
+-use odim_aidl_interface::aidl::android::aiseal::tests::odim::IAiSealOdimPayloadService::{
+-    BnAiSealOdimPayloadService, IAiSealOdimPayloadService, PORT,
+-};
+-
+-use anyhow::Result;
+-use binder::{BinderFeatures, Interface, Result as BinderResult, Strong};
+-use log::{error, info};
+-use std::process::exit;
+-
+-const LOG_TAG: &str = "AiSealOdimTestPayload";
+-
+-vm_payload::main!(main);
+-
+-fn main() {
+-    android_logger::init_once(
+-        android_logger::Config::default().with_tag(LOG_TAG).with_max_level(log::LevelFilter::Info),
+-    );
+-    if let Err(e) = try_main() {
+-        error!("failed with {:?}", e);
+-        exit(1);
+-    }
+-}
+-
+-fn try_main() -> Result<()> {
+-    info!("Starting ODIM test payload");
+-
+-    vm_payload::run_single_vsock_service(AiSealOdimPayloadService::new_binder(), PORT.try_into()?)
+-}
+-
+-struct AiSealOdimPayloadService {}
+-
+-impl Interface for AiSealOdimPayloadService {}
+-
+-impl AiSealOdimPayloadService {
+-    fn new_binder() -> Strong<dyn IAiSealOdimPayloadService> {
+-        BnAiSealOdimPayloadService::new_binder(
+-            AiSealOdimPayloadService {},
+-            BinderFeatures::default(),
+-        )
+-    }
+-}
+-
+-impl IAiSealOdimPayloadService for AiSealOdimPayloadService {
+-    fn joinStringsWithSpace(&self, a: &str, b: &str) -> BinderResult<String> {
+-        Ok(format!("{} {}", a, b))
+-    }
+-
+-    fn exit(&self, status: i32) -> BinderResult<()> {
+-        std::process::exit(status);
+-    }
+-}
+-- 
+2.56.0
+

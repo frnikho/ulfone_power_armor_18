@@ -1,0 +1,29 @@
+From f93c805ce3966d5ab1e0a7e2ba4371208916df98 Mon Sep 17 00:00:00 2001
+From: "Christopher A. Williamson" <contact@chrisaw.io>
+Date: Tue, 17 Feb 2026 15:05:30 +0000
+Subject: [PATCH 1/5] Warn that secure app spawning breaks root integration
+
+Add a warning to the exec spawning footer text in Exploit Protection
+settings informing users that enabling this feature will break root
+solutions like Magisk and KernelSU.
+
+Change-Id: I0000000000000000000000000000000000000015
+---
+ res/values/strings_app_exploit_protection.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/res/values/strings_app_exploit_protection.xml b/res/values/strings_app_exploit_protection.xml
+index 59348a1..6086822 100644
+--- a/res/values/strings_app_exploit_protection.xml
++++ b/res/values/strings_app_exploit_protection.xml
+@@ -107,7 +107,7 @@ This setting doesn't apply to preinstalled apps, WebView JIT is always disable
+     <string name="aep_exec_spawning">Secure app spawning</string>
+     <string name="aep_exec_spawning_footer">Launch app in a more secure way than Android which increases memory usage and takes slightly longer.</string>
+     <string name="aep_default_exec_spawning_main_switch_title">Enable by default</string>
+-    <string name="aep_default_exec_spawning_footer">Launch apps in a more secure way than Android which takes slightly longer and increases memory usage by app processes.</string>
++    <string name="aep_default_exec_spawning_footer">Launch apps in a more secure way than Android which takes slightly longer and increases memory usage by app processes.\n\nWarning: Enabling this will break root (Magisk/KernelSU) integration, as root hooks injected into the Zygote process are lost when apps are re-exec\'d.</string>
+     <string name="aep_default_exec_spawning_summary_on">Enabled by default</string>
+
+ </resources>
+--
+2.55.0

@@ -1,0 +1,36 @@
+From aa94dcf569e60521d0eeb7c081cc26d9254dc0c9 Mon Sep 17 00:00:00 2001
+From: nico <31937059+frnikho@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 21:53:34 +0100
+Subject: [PATCH] gapps: inherit MindTheGapps from vendor/gapps when present
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01NAP5WhrNfcHujA9XUfYqLY
+---
+ gapps.mk | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/gapps.mk b/gapps.mk
+index 15e12a9..f72eb2e 100644
+--- a/gapps.mk
++++ b/gapps.mk
+@@ -42,7 +42,7 @@ $(call inherit-product, vendor/opengapps/build/opengapps-packages.mk)
+ endif
+ 
+ #Pixel Experience gapps
+-ifneq ($(wildcard vendor/gapps),)
++ifneq ($(wildcard vendor/gapps/config.mk),)
+ IS_PHONE := true
+ $(call inherit-product,vendor/gapps/config.mk)
+ PRODUCT_PACKAGES += \
+@@ -50,3 +50,8 @@ PRODUCT_PACKAGES += \
+ 	   com.simplemobiletools.gallery.pro \
+ 
+ endif
++
++# MindTheGapps (gitlab.com/MindTheGapps/vendor_gapps, cinnamonbun = Android 17) checked out in vendor/gapps
++ifneq ($(wildcard vendor/gapps/arm64/arm64-vendor.mk),)
++$(call inherit-product, vendor/gapps/arm64/arm64-vendor.mk)
++endif
+-- 
+2.56.0
+
